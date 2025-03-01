@@ -7,8 +7,8 @@ const dataFilePath = path.join(process.cwd(), 'src/data/search_20250223_180928.j
 
 export async function DELETE(request, { params }) {
     try {
-        // Récupérer l'ID depuis les paramètres (avec await)
-        const { id } = params;
+        // Récupérer l'ID depuis les paramètres
+        const { id } = await params;
 
         // Vérifier si le fichier existe
         if (!fs.existsSync(dataFilePath)) {
@@ -48,8 +48,8 @@ export async function DELETE(request, { params }) {
 
 export async function PUT(request, { params }) {
     try {
-        // Récupérer l'ID depuis les paramètres (avec await)
-        const { id } = params;
+        // Récupérer l'ID depuis les paramètres
+        const { id } = await params;
 
         // Récupérer les données de la requête
         const entry = await request.json();
@@ -123,8 +123,8 @@ export async function PUT(request, { params }) {
 
 export async function GET(request, { params }) {
     try {
-        // Récupérer l'ID depuis les paramètres (avec await)
-        const { id } = params;
+        // Récupérer l'ID depuis les paramètres
+        const { id } = await params;
 
         // Vérifier si le fichier existe
         if (!fs.existsSync(dataFilePath)) {
