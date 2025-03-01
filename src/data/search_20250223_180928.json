@@ -20059,5 +20059,58 @@
         }
       ]
     }
+  },
+  "entry_1740841967086": {
+    "name": "test",
+    "description": "ceci est un test",
+    "search": "coucou poulette",
+    "details": {
+      "Label": "",
+      "Messages": [
+        {
+          "Label": "test",
+          "Description": "coucou",
+          "Bubbles": [
+            {
+              "Text": "test",
+              "Image": "",
+              "Video": "",
+              "Order": 0
+            }
+          ],
+          "Buttons": [
+            {
+              "Label": "test",
+              "Link": "msg1",
+              "Type": "link",
+              "Order": 0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "nicolas": {
+    "name": "nicolas",
+    "description": "nicolas",
+    "search": "nicolas",
+    "details": {
+      "Label": "",
+      "Messages": [
+        {
+          "Label": "nicolas",
+          "Description": "nicolas",
+          "Bubbles": [
+            {
+              "Text": "nicolas",
+              "Image": "",
+              "Video": "",
+              "Order": 1
+            }
+          ],
+          "Buttons": []
+        }
+      ]
+    }
   }
 }

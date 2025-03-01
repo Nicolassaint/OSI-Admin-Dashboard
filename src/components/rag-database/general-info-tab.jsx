@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import TextareaWithMarkdown from "./textarea-with-markdown";
 
 export default function GeneralInfoTab({ entry, setEntry }) {
   return (
@@ -19,25 +20,22 @@ export default function GeneralInfoTab({ entry, setEntry }) {
           />
         </div>
         
-        <div>
-          <label className="block text-sm font-medium mb-1">Description</label>
-          <Textarea 
-            className="w-full resize-y min-h-[100px]"
-            value={entry.description || ''}
-            onChange={(e) => setEntry({...entry, description: e.target.value})}
-            placeholder="Description de l'entrée"
-          />
-        </div>
+        <TextareaWithMarkdown
+          label="Description"
+          value={entry.description || ''}
+          onChange={(e) => setEntry({...entry, description: e.target.value})}
+          placeholder="Description de l'entrée"
+          className="min-h-[100px]"
+          rows={4}
+        />
         
-        <div>
-          <label className="block text-sm font-medium mb-1">Termes de recherche</label>
-          <Textarea 
-            className="w-full resize-y min-h-[60px]"
-            value={entry.search || ''}
-            onChange={(e) => setEntry({...entry, search: e.target.value})}
-            placeholder="Termes de recherche"
-          />
-        </div>
+        <TextareaWithMarkdown
+          label="Termes de recherche"
+          value={entry.search || ''}
+          onChange={(e) => setEntry({...entry, search: e.target.value})}
+          placeholder="Termes de recherche"
+          className="min-h-[60px]"
+        />
       </CardContent>
     </Card>
   );

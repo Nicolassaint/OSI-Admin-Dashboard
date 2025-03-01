@@ -9,6 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 
 // Importer le fichier JSON
 import ragDataFile from '@/data/search_20250223_180928.json';
@@ -28,6 +29,7 @@ export default function RagDatabasePage() {
 
   // Ajout d'un état pour gérer la confirmation de suppression
   const [deleteConfirmation, setDeleteConfirmation] = useState({ show: false, entryId: null });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     try {
@@ -83,6 +85,7 @@ export default function RagDatabasePage() {
   // Fonction pour gérer la suppression
   const handleDelete = async (entryId) => {
     try {
+      setIsDeleting(true);
       // Appel API pour supprimer l'entrée
       const response = await fetch(`/api/rag-database/${entryId}`, {
         method: 'DELETE',
@@ -102,6 +105,7 @@ export default function RagDatabasePage() {
     } finally {
       // Fermer la boîte de dialogue
       setDeleteConfirmation({ show: false, entryId: null });
+      setIsDeleting(false);
     }
   };
 
@@ -269,28 +273,17 @@ export default function RagDatabasePage() {
       </Card>
 
       {/* Composant de confirmation de suppression */}
-      {deleteConfirmation.show && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full animate-in fade-in slide-in-from-bottom-10 duration-300">
-            <h3 className="text-lg font-semibold mb-4">Confirmer la suppression</h3>
-            <p className="mb-6">Êtes-vous sûr de vouloir supprimer cette entrée ? Cette action est irréversible.</p>
-            <div className="flex justify-end space-x-2">
-              <Button 
-                variant="outline" 
-                onClick={() => setDeleteConfirmation({ show: false, entryId: null })}
-              >
-                Annuler
-              </Button>
-              <Button 
-                variant="destructive" 
-                onClick={() => handleDelete(deleteConfirmation.entryId)}
-              >
-                Supprimer
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmationDialog
+        isOpen={deleteConfirmation.show}
+        onClose={() => setDeleteConfirmation({ show: false, entryId: null })}
+        onConfirm={() => handleDelete(deleteConfirmation.entryId)}
+        title="Confirmer la suppression"
+        message="Êtes-vous sûr de vouloir supprimer cette entrée ? Cette action est irréversible."
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        variant="destructive"
+        isLoading={isDeleting}
+      />
     </div>
   );
 } 

@@ -20,13 +20,30 @@ import { signOut } from "next-auth/react";
 import { Suspense } from "react";
 import { useTheme } from "next-themes";
 
+// Ajout du composant de chargement avec logo rotatif
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin">
+        <Image 
+          src="/OSI_logo.png" 
+          alt="OSI Logo Loading" 
+          width={80} 
+          height={80} 
+          className="rounded-full"
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const { theme, setTheme } = useTheme();
 
   if (status === "loading") {
-    return <div className="flex items-center justify-center min-h-screen">Chargement...</div>;
+    return <LoadingSpinner />;
   }
 
   if (status === "unauthenticated") {
@@ -142,7 +159,7 @@ export default function DashboardLayout({ children }) {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto bg-background p-6">
-          <Suspense fallback={<div>Chargement...</div>}>
+          <Suspense fallback={<LoadingSpinner />}>
             {children}
           </Suspense>
         </main>
