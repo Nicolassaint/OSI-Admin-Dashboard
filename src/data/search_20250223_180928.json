@@ -20061,5 +20061,28 @@
         }
       ]
     }
+  },
+  "Nouvelle entrée": {
+    "name": "Nouvelle entrée",
+    "description": "Nouvelle entrée",
+    "search": "Nouvelle entrée",
+    "details": {
+      "Label": "",
+      "Messages": [
+        {
+          "Label": "Nouvelle entrée",
+          "Description": "Nouvelle entrée",
+          "Bubbles": [
+            {
+              "Text": "Nouvelle entrée",
+              "Image": "",
+              "Video": "",
+              "Order": 1
+            }
+          ],
+          "Buttons": []
+        }
+      ]
+    }
   }
 }
