@@ -15,13 +15,16 @@ import { useEffect, useState } from "react";
 // Fonction pour récupérer les métriques depuis Prometheus
 async function fetchPrometheusMetrics() {
   try {
+    // Utilisation d'une variable d'environnement pour l'URL de Prometheus
+    const prometheusUrl = process.env.NEXT_PUBLIC_PROMETHEUS_URL || 'http://localhost:9091';
+    
     // Récupération des métriques pertinentes
-    const totalRequests = await fetch('http://localhost:9091/api/v1/query?query=osi_total_requests_total').then(res => res.json());
-    const ragItemsCount = await fetch('http://localhost:9091/api/v1/query?query=osi_rag_items_count').then(res => res.json());
+    const totalRequests = await fetch(`${prometheusUrl}/api/v1/query?query=osi_total_requests_total`).then(res => res.json());
+    const ragItemsCount = await fetch(`${prometheusUrl}/api/v1/query?query=osi_rag_items_count`).then(res => res.json());
     
     // Calcul du temps de réponse moyen
-    const responseTimeSum = await fetch('http://localhost:9091/api/v1/query?query=osi_response_time_seconds_sum').then(res => res.json());
-    const responseTimeCount = await fetch('http://localhost:9091/api/v1/query?query=osi_response_time_seconds_count').then(res => res.json());
+    const responseTimeSum = await fetch(`${prometheusUrl}/api/v1/query?query=osi_response_time_seconds_sum`).then(res => res.json());
+    const responseTimeCount = await fetch(`${prometheusUrl}/api/v1/query?query=osi_response_time_seconds_count`).then(res => res.json());
     
     // Extraction des valeurs
     const requestsValue = totalRequests.data.result[0]?.value[1] || '0';
