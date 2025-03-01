@@ -73,7 +73,11 @@ export default function RagDatabasePage() {
   const filteredEntries = ragData.entries.filter(entry => 
     entry.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.search?.toLowerCase().includes(searchTerm.toLowerCase())
+    entry.search?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    entry.details?.label?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    entry.details?.messages?.some(message => 
+        message.label?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
   
   const totalPages = Math.ceil(filteredEntries.length / ITEMS_PER_PAGE);
