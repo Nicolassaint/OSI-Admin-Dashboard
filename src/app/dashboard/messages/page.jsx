@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrashIcon, MagnifyingGlassIcon, ArchiveIcon } from "@radix-ui/react-icons";
 import React from "react";
+import { MessageList, MessageFilter, MessageSearch } from "@/components/messages";
 
 export default function MessagesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -202,41 +201,6 @@ export default function MessagesPage() {
     return matchesSearch && message.status === filter;
   });
 
-  // Formater la date
-  const formatDate = (dateString) => {
-    try {
-      // Vérifier si la date est valide
-      if (!dateString) return "Date inconnue";
-      
-      // Essayer de créer une date directement
-      let date = new Date(dateString);
-      
-      // Si la date n'est pas valide, essayer de nettoyer le format
-      if (isNaN(date.getTime())) {
-        // Essayer de supprimer les microsecondes si présentes
-        const cleanDateString = dateString.split('.')[0];
-        date = new Date(cleanDateString);
-        
-        // Si toujours pas valide, retourner un message d'erreur
-        if (isNaN(date.getTime())) {
-          console.warn("Date invalide:", dateString);
-          return "Date invalide";
-        }
-      }
-      
-      return new Intl.DateTimeFormat("fr-FR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date);
-    } catch (error) {
-      console.error("Erreur lors du formatage de la date:", error);
-      return "Erreur de date";
-    }
-  };
-
   // Marquer un message comme résolu
   const markAsResolved = (id) => {
     setMessages(
@@ -268,26 +232,8 @@ export default function MessagesPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
         <div className="flex space-x-2">
-          <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="all">Tous</option>
-            <option value="resolved">Résolus</option>
-            <option value="pending">En attente</option>
-            <option value="archived">Archivés</option>
-          </select>
+          <MessageSearch searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+          <MessageFilter filter={filter} setFilter={setFilter} />
         </div>
       </div>
 
@@ -296,126 +242,14 @@ export default function MessagesPage() {
           <CardTitle>Liste des messages ({filteredMessages.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : error ? (
-            <div className="text-center text-red-500 py-4">{error}</div>
-          ) : (
-            <div className="space-y-4">
-              {filteredMessages.length === 0 ? (
-                <p className="text-center text-muted-foreground py-4">
-                  Aucun message trouvé
-                </p>
-              ) : (
-                filteredMessages.map((message) => (
-                  <div
-                    key={message.id || `message-${Math.random()}`}
-                    className="border rounded-lg p-4 space-y-3"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-medium">{message.user}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatDate(message.timestamp)}
-                        </p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => archiveMessage(message.id)}
-                        >
-                          <ArchiveIcon className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteMessage(message.id)}
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">Question:</p>
-                      <p className="text-sm">{message.message}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">Réponse:</p>
-                      <p className="text-sm">
-                        {message.response || "Pas encore de réponse"}
-                      </p>
-                    </div>
-                    
-                    {/* Afficher les médias si présents */}
-                    {message.image && (
-                      <div>
-                        <p className="font-medium text-sm">Image:</p>
-                        <img 
-                          src={message.image} 
-                          alt="Image jointe" 
-                          className="max-w-full h-auto rounded mt-1"
-                          style={{ maxHeight: '200px' }}
-                        />
-                      </div>
-                    )}
-                    
-                    {message.video && (
-                      <div>
-                        <p className="font-medium text-sm">Vidéo:</p>
-                        <video 
-                          controls 
-                          className="max-w-full h-auto rounded mt-1"
-                          style={{ maxHeight: '200px' }}
-                        >
-                          <source src={message.video} />
-                          Votre navigateur ne supporte pas la lecture de vidéos.
-                        </video>
-                      </div>
-                    )}
-                    
-                    {message.buttons && message.buttons.length > 0 && (
-                      <div>
-                        <p className="font-medium text-sm">Actions suggérées:</p>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {message.buttons.map((btn, idx) => (
-                            <Button key={idx} variant="outline" size="sm">
-                              {btn.text || btn}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between items-center">
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          message.status === "resolved"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                            : message.status === "pending"
-                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
-                            : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
-                        }`}
-                      >
-                        {message.status === "resolved"
-                          ? "Résolu"
-                          : message.status === "pending"
-                          ? "En attente"
-                          : "Archivé"}
-                      </span>
-                      {message.status !== "resolved" && (
-                        <Button size="sm" onClick={() => markAsResolved(message.id)}>
-                          Marquer comme résolu
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+          <MessageList 
+            messages={filteredMessages}
+            loading={loading}
+            error={error}
+            onMarkAsResolved={markAsResolved}
+            onDelete={deleteMessage}
+            onArchive={archiveMessage}
+          />
         </CardContent>
       </Card>
     </div>
