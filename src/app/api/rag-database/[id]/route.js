@@ -5,6 +5,9 @@ import path from 'path';
 // Chemin vers le fichier JSON
 const dataFilePath = path.join(process.cwd(), 'src/data/search_20250223_180928.json');
 
+// Ajouter cette configuration pour désactiver la génération de chemins statiques
+export const dynamic = 'force-dynamic';
+
 export async function DELETE(request, { params }) {
     try {
         // Récupérer l'ID depuis les paramètres

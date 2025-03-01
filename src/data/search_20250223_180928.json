@@ -1,109 +1,4 @@
 {
-  "wifi": {
-    "name": "wifi",
-    "description": "**Le Wifi en Administration Centrale**",
-    "search": "Gestion du Wi-Fi en Administration Centrale. Découvrez nos solutions pour un réseau sans fil sécurisé et performant, optimisées pour les besoins spécifiques des administrations publiques. Nous offrons une expertise complète pour la gestion de vos infrastructures Wi-Fi, incluant le déploiement, la maintenance et l'optimisation continue.",
-    "keywords": "",
-    "links": [],
-    "details": {
-      "Name": "wifi",
-      "Description": null,
-      "Label": "msg45",
-      "Image": null,
-      "History": false,
-      "AfterDialog": "DoNothing",
-      "Messages": [
-        {
-          "Label": "msg45",
-          "Description": "Wifi",
-          "Bubbles": [
-            {
-              "Text": "**Le Wifi en Administration Centrale**",
-              "Image": null,
-              "Video": null,
-              "Order": 1
-            },
-            {
-              "Text": "Je peux vous orienter sur les propositions suivantes :",
-              "Image": null,
-              "Video": null,
-              "Order": 2
-            }
-          ],
-          "Buttons": [
-            {
-              "Label": "Se connecter au Wifi de Bercy",
-              "Link": "msg02",
-              "Type": "PostBack",
-              "Order": 1
-            },
-            {
-              "Label": "Demander une borne Wifi",
-              "Link": "msg44",
-              "Type": "PostBack",
-              "Order": 2
-            },
-            {
-              "Label": "Documentation sur le Wifi d'Administration Centrale",
-              "Link": "msg024",
-              "Type": "PostBack",
-              "Order": 3
-            },
-            {
-              "Label": "Connaitre les outils pour télétravailler",
-              "Link": "msg23",
-              "Type": "PostBack",
-              "Order": 4
-            }
-          ],
-          "Actions": [],
-          "Cards": [],
-          "OpenQuestion": false,
-          "OpenQuestionLink": null
-        }
-      ]
-    }
-  },
-  "Nexthink": {
-    "name": "Nexthink",
-    "description": "**NEXTHINK** est un outil de surveillance du parc informatique accessible aux AIP.",
-    "search": "Nexthink est un outil de surveillance avancé du parc informatique, conçu pour les AIP (Agence France Presse). Cet outil permet une gestion proactive des alertes AFP et des dépêches, facilitant l'accès aux informations critiques. Vous pouvez accéder à Nexthink via le portail [ici](https://nexthink-portal.alize/). Nexthink offre également des fonctionnalités pour la cession de matériel informatique, le prêt de matériel, et l'installation de logiciels, rendant ainsi la gestion du parc informatique plus efficace et sécurisée. Idéal pour les équipes AIP cherchant à optimiser leur flux de travail et à améliorer la surveillance continue.",
-    "keywords": "AIP Agence#France#Presse Comment#accéder#aux#alertes#de#l'AFP#? Comment#accéder#aux#dépêches#? Comment#contacter#votre#équipe#AIP GRID acceder#nexthink acces#nexthink actualités afp alertes#AFP application#nexthink cession#PC cession#de#materiel cherche#nexthink dépêche dépêches info informations infos installer#logiciel monAFP nexthink pret#materiel surveillance#du#parc#informatique écran",
-    "links": [],
-    "details": {
-      "Name": "Nexthink",
-      "Description": null,
-      "Label": "msg000346",
-      "Image": null,
-      "History": false,
-      "AfterDialog": "DoNothing",
-      "Messages": [
-        {
-          "Label": "msg000346",
-          "Description": "Nexthink",
-          "Bubbles": [
-            {
-              "Text": "**NEXTHINK** est un outil de surveillance du parc informatique accessible aux AIP.",
-              "Image": null,
-              "Video": null,
-              "Order": 1
-            },
-            {
-              "Text": "Vous pouvez y accéder [ici]( https://nexthink-portal.alize/)",
-              "Image": null,
-              "Video": null,
-              "Order": 2
-            }
-          ],
-          "Buttons": [],
-          "Actions": [],
-          "Cards": [],
-          "OpenQuestion": false,
-          "OpenQuestionLink": null
-        }
-      ]
-    }
-  },
   "T.A.O": {
     "name": "T.A.O",
     "description": "**T.A.O.** est un outil de traduction assistée par ordinateur des sociétés ATRIL et TERMINOTIX à destination des utilisateurs du centre de traduction du secrétariat général.",
@@ -20109,6 +20004,60 @@
             }
           ],
           "Buttons": []
+        }
+      ]
+    }
+  },
+  "wifi2": {
+    "name": "wifi2",
+    "description": "**Le Wifi en Administration Centrale**",
+    "search": "Gestion du Wi-Fi en Administration Centrale. Découvrez nos solutions pour un réseau sans fil sécurisé et performant, optimisées pour les besoins spécifiques des administrations publiques. Nous offrons une expertise complète pour la gestion de vos infrastructures Wi-Fi, incluant le déploiement, la maintenance et l'optimisation continue.",
+    "details": {
+      "Label": "msg45",
+      "Messages": [
+        {
+          "Label": "msg45",
+          "Description": "Wifi",
+          "Bubbles": [
+            {
+              "Text": "**Le Wifi en Administration Centrale**",
+              "Image": "",
+              "Video": "",
+              "Order": 1
+            },
+            {
+              "Text": "Je peux vous orienter sur les propositions suivantes :",
+              "Image": "",
+              "Video": "",
+              "Order": 2
+            }
+          ],
+          "Buttons": [
+            {
+              "Label": "Se connecter au Wifi de Bercy",
+              "Link": "msg02",
+              "Type": "PostBack",
+              "Order": 1
+            },
+            {
+              "Label": "Demander une borne Wifi",
+              "Link": "msg44",
+              "Type": "PostBack",
+              "Order": 2
+            },
+            {
+              "Label": "Documentation sur le Wifi d'Administration Centrale",
+              "Link": "msg024",
+              "Type": "PostBack",
+              "Order": 3
+            },
+            {
+              "Label": "Connaitre les outils pour télétravailler",
+              "Link": "msg23",
+              "Type": "PostBack",
+              "Order": 4
+            }
+          ]
         }
       ]
     }
