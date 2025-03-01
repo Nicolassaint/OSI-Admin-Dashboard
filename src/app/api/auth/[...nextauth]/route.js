@@ -7,16 +7,16 @@ import { compare } from "bcrypt";
 const users = [
   {
     id: "1",
-    name: "Admin OSI",
-    email: "admin@osi.fr",
-    password: "admin123", // Mot de passe en clair
+    name: "admin",
+    email: "admin",
+    password: "admin", // Mot de passe en clair
     role: "admin",
   },
   {
     id: "2",
-    name: "User OSI",
-    email: "user@osi.fr",
-    password: "user123", // Mot de passe en clair
+    name: "user",
+    email: "user",
+    password: "user", // Mot de passe en clair
     role: "user",
   },
 ];

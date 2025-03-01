@@ -20,7 +20,7 @@ export default function Home() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-background">
       <div className="mb-8">
         <Image
-          src="/osi_logo.png"
+          src="/OSI_logo.png"
           alt="OSI Logo"
           width={200}
           height={200}

@@ -76,48 +76,22 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+        <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle>Général</CardTitle>
-            <CardDescription>
-              Paramètres généraux du chatbot
-            </CardDescription>
+            <CardTitle>Paramètres généraux</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="chatbotName" className="text-sm font-medium">
-                Nom du chatbot
-              </label>
-              <input
-                id="chatbotName"
-                type="text"
-                value={settings.general.chatbotName}
-                onChange={(e) => handleChange("general", "chatbotName", e.target.value)}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="welcomeMessage" className="text-sm font-medium">
+              <label className="text-sm font-medium text-foreground">
                 Message d'accueil
               </label>
               <textarea
-                id="welcomeMessage"
+                className="w-full px-3 py-2 border border-input rounded-md 
+                focus:outline-none focus:ring-2 focus:ring-primary 
+                bg-background text-foreground"
                 value={settings.general.welcomeMessage}
                 onChange={(e) => handleChange("general", "welcomeMessage", e.target.value)}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                 rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="maxMessagesPerUser" className="text-sm font-medium">
-                Nombre maximum de messages par utilisateur
-              </label>
-              <input
-                id="maxMessagesPerUser"
-                type="number"
-                value={settings.general.maxMessagesPerUser}
-                onChange={(e) => handleChange("general", "maxMessagesPerUser", parseInt(e.target.value))}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
           </CardContent>
@@ -159,7 +133,7 @@ export default function SettingsPage() {
                 id="fontFamily"
                 value={settings.appearance.fontFamily}
                 onChange={(e) => handleChange("appearance", "fontFamily", e.target.value)}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
               >
                 <option value="Inter">Inter</option>
                 <option value="Roboto">Roboto</option>

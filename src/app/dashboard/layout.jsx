@@ -13,13 +13,17 @@ import {
   ExitIcon,
   DashboardIcon,
   FileTextIcon,
+  SunIcon,
+  MoonIcon,
 } from "@radix-ui/react-icons";
 import { signOut } from "next-auth/react";
 import { Suspense } from "react";
+import { useTheme } from "next-themes";
 
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const { theme, setTheme } = useTheme();
 
   if (status === "loading") {
     return <div className="flex items-center justify-center min-h-screen">Chargement...</div>;
@@ -38,29 +42,31 @@ export default function DashboardLayout({ children }) {
   ];
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background text-foreground">
       {/* Sidebar */}
-      <div className="hidden md:flex md:w-64 md:flex-col">
-        <div className="flex flex-col flex-grow pt-5 overflow-y-auto border-r bg-card">
-          <div className="flex items-center flex-shrink-0 px-4">
-            <Link href="/dashboard" className="flex items-center">
-              <Image
-                src="/OSI_logo.png"
-                alt="OSI Logo"
-                width={40}
-                height={40}
-                className="mr-2"
-              />
-              <span className="font-bold text-xl">OSI Admin</span>
-            </Link>
+      <div className="hidden md:flex md:flex-col md:w-64 bg-card border-r border-border">
+        {/* Logo et titre */}
+        <div className="flex flex-col items-center pt-8 pb-6">
+          <div className="mb-4">
+            <Image 
+              src="/OSI_logo.png" 
+              alt="OSI Admin Logo" 
+              width={80} 
+              height={80} 
+              className="rounded-full"
+            />
           </div>
-          <div className="mt-8 flex flex-col flex-1">
-            <nav className="flex-1 px-2 space-y-1">
-              {navigation.map((item) => {
-                const isActive = pathname === item.href;
-                return (
+          <h1 className="text-xl font-semibold text-foreground">OSI Admin</h1>
+        </div>
+        
+        {/* Navigation */}
+        <nav className="flex-1 px-4 mt-2">
+          <ul className="space-y-2">
+            {navigation.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <li key={item.name}>
                   <Link
-                    key={item.name}
                     href={item.href}
                     className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
                       isActive
@@ -71,27 +77,28 @@ export default function DashboardLayout({ children }) {
                     <item.icon className="mr-3 h-5 w-5" />
                     {item.name}
                   </Link>
-                );
-              })}
-            </nav>
-            <div className="p-4">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => signOut({ callbackUrl: "/login" })}
-              >
-                <ExitIcon className="mr-2 h-4 w-4" />
-                Déconnexion
-              </Button>
-            </div>
-          </div>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+        
+        <div className="p-4">
+          <Button
+            variant="outline"
+            className="w-full justify-start"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+          >
+            <ExitIcon className="mr-2 h-4 w-4" />
+            Déconnexion
+          </Button>
         </div>
       </div>
 
       {/* Main content */}
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Top navigation */}
-        <header className="bg-card shadow-sm z-10">
+        <header className="bg-card border-b border-border shadow-sm z-10">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center md:hidden">
@@ -100,6 +107,24 @@ export default function DashboardLayout({ children }) {
                 </Button>
               </div>
               <div className="flex items-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="mr-4 flex items-center gap-2"
+                >
+                  {theme === "dark" ? (
+                    <>
+                      <SunIcon className="h-4 w-4" />
+                      <span className="hidden sm:inline">Mode clair</span>
+                    </>
+                  ) : (
+                    <>
+                      <MoonIcon className="h-4 w-4" />
+                      <span className="hidden sm:inline">Mode sombre</span>
+                    </>
+                  )}
+                </Button>
                 <div className="ml-4 flex items-center md:ml-6">
                   <div className="text-sm font-medium">
                     {session?.user?.name || "Utilisateur"} 
@@ -116,7 +141,7 @@ export default function DashboardLayout({ children }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-background">
+        <main className="flex-1 overflow-y-auto bg-background p-6">
           <Suspense fallback={<div>Chargement...</div>}>
             {children}
           </Suspense>
