@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+![image](/public/OSI_logo.png)
 
-## Getting Started
+# Dashboard Admin OSI
 
-First, run the development server:
+Ce projet est un tableau de bord d'administration pour OSI, développé avec Next.js.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Fonctionnalités
+- **Authentification** : Système de connexion sécurisé avec gestion des rôles (admin/utilisateur) via NextAuth.js.
+- **Interface responsive** : Design adaptatif pour une expérience fluide sur tous les appareils.
+- **Mode sombre/clair** : Thème personnalisable selon les préférences de l'utilisateur.
+- **Gestion des messages** : Interface pour visualiser et gérer les messages des utilisateurs.
+- **Base de données RAG** : Gestion complète des entrées de la base de connaissances (création, édition, suppression).
+- **Statistiques** : Visualisation des données d'utilisation avec des graphiques interactifs grâce à Recharts.
+- **Paramètres** : Configuration personnalisable du système pour les administrateurs.
+
+## Démarrage rapide
+
+### Prérequis
+- Node.js (version recommandée : 18+)
+- npm ou yarn
+
+### Installation
+1. Clonez le dépôt :
+   ```bash
+   git clone https://github.com/nicolassaint/OSI-Admin-Dashboard.git
+   cd OSI-Admin-Dashboard
+   ```
+2. Installez les dépendances :
+   ```bash
+   npm install
+   # ou
+   yarn install
+   ```
+3. Configurez les variables d'environnement en créant un fichier `.env.local` à la racine du projet :
+   ```env
+   NEXTAUTH_URL=http://localhost:3002
+   NEXTAUTH_SECRET=votre_secret_securise_pour_nextauth
+   ```
+4. Lancez le serveur de développement :
+   ```bash
+   npm run dev
+   # ou
+   yarn dev
+   ```
+5. Ouvrez [http://localhost:3002](http://localhost:3002) dans votre navigateur pour voir le tableau de bord.
+
+## Identifiants de test
+Pour vous connecter à l'application, utilisez l'un des comptes suivants :
+
+### Administrateur :
+- **Email** : admin
+- **Mot de passe** : admin
+
+### Utilisateur standard :
+- **Email** : user
+- **Mot de passe** : user
+
+## Structure du projet
+```
+/OSI-Admin-Dashboard
+│── src/app               # Pages et routes de l'application
+│── src/components        # Composants réutilisables
+│── src/providers        # Fournisseurs de contexte (authentification, thème)
+│── src/data             # Fichiers de données JSON pour la base RAG
+│── /public           # Ressources statiques (images, icônes)
+│── .env.local        # Fichier de configuration des variables d'environnement
+│── package.json      # Dépendances et scripts npm
+│── next.config.js    # Configuration de Next.js
+│── tailwind.config.js# Configuration de Tailwind CSS
+│── README.md         # Documentation du projet
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Technologies utilisées
+- **Next.js** : Framework React avec rendu côté serveur et statique.
+- **NextAuth.js** : Gestion de l'authentification et des sessions utilisateurs.
+- **Tailwind CSS** : Framework CSS pour un design moderne et responsive.
+- **Recharts** : Bibliothèque de visualisation de données interactive.
+- **React Markdown** : Rendu de contenu formaté en Markdown.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Auteur
+Ce projet a été développé par le Bercy HUB
