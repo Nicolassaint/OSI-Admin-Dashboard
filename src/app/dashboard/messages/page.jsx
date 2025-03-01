@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import React from "react";
-import { MessageList, MessageFilter, MessageSearch } from "@/components/messages";
+import { MessageList, MessageFilter, MessageSearch, MessageSort } from "@/components/messages";
 
 export default function MessagesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -12,6 +12,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [socket, setSocket] = useState(null);
+  const [sortOrder, setSortOrder] = useState("desc");
 
   // Récupérer les conversations depuis l'API
   useEffect(() => {
@@ -184,22 +185,35 @@ export default function MessagesPage() {
     }
   }, []); // Dépendance vide pour n'exécuter qu'une seule fois
 
-  // Filtrer les messages en fonction de la recherche et du filtre
-  const filteredMessages = messages.filter((message) => {
-    // S'assurer que message a un id valide
-    if (!message || !message.id) {
-      console.warn("Message sans id détecté:", message);
-      return false;
+  // Modifier la fonction de filtrage pour inclure le tri
+  const filteredMessages = useMemo(() => {
+    let result = [...messages];
+    
+    // Filtrage par statut
+    if (filter !== "all") {
+      result = result.filter((message) => message.status === filter);
     }
     
-    const matchesSearch =
-      (message.user && message.user.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (message.message && message.message.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (message.response && message.response.toLowerCase().includes(searchTerm.toLowerCase()));
-
-    if (filter === "all") return matchesSearch;
-    return matchesSearch && message.status === filter;
-  });
+    // Filtrage par recherche
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (message) =>
+          message.message?.toLowerCase().includes(term) ||
+          message.response?.toLowerCase().includes(term) ||
+          message.user?.toLowerCase().includes(term)
+      );
+    }
+    
+    // Tri par date
+    result.sort((a, b) => {
+      const dateA = new Date(a.timestamp);
+      const dateB = new Date(b.timestamp);
+      return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+    });
+    
+    return result;
+  }, [messages, filter, searchTerm, sortOrder]);
 
   // Marquer un message comme résolu
   const markAsResolved = (id) => {
@@ -234,6 +248,7 @@ export default function MessagesPage() {
         <div className="flex space-x-2">
           <MessageSearch searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
           <MessageFilter filter={filter} setFilter={setFilter} />
+          <MessageSort sortOrder={sortOrder} setSortOrder={setSortOrder} />
         </div>
       </div>
 
