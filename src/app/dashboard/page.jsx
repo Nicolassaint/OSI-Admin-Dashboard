@@ -19,29 +19,32 @@ async function fetchPrometheusMetrics() {
     const prometheusUrl = process.env.NEXT_PUBLIC_PROMETHEUS_URL || 'http://localhost:9091';
     
     // Récupération des métriques pertinentes
-    const totalRequests = await fetch(`${prometheusUrl}/api/v1/query?query=osi_total_requests_total`).then(res => res.json());
+    const totalRequests = await fetch(`${prometheusUrl}/api/v1/query?query=osi_total_requests`).then(res => res.json());
     const ragItemsCount = await fetch(`${prometheusUrl}/api/v1/query?query=osi_rag_items_count`).then(res => res.json());
     
     // Calcul du temps de réponse moyen
-    const responseTimeSum = await fetch(`${prometheusUrl}/api/v1/query?query=osi_response_time_seconds_sum`).then(res => res.json());
-    const responseTimeCount = await fetch(`${prometheusUrl}/api/v1/query?query=osi_response_time_seconds_count`).then(res => res.json());
+    const avgResponseTime = await fetch(`${prometheusUrl}/api/v1/query?query=osi_avg_response_time_seconds`).then(res => res.json());
+    
+    // Récupération du taux d'évaluation positive
+    const positiveEvaluationRate = await fetch(`${prometheusUrl}/api/v1/query?query=osi_positive_evaluation_rate`).then(res => res.json());
     
     // Extraction des valeurs
     const requestsValue = totalRequests.data.result[0]?.value[1] || '0';
     const ragItemsValue = ragItemsCount.data.result[0]?.value[1] || '0';
+    const responseTimeValue = avgResponseTime.data.result[0]?.value[1] || '0';
     
-    const sumValue = parseFloat(responseTimeSum.data.result[0]?.value[1] || '0');
-    const countValue = parseFloat(responseTimeCount.data.result[0]?.value[1] || '1');
-    const avgResponseTime = (sumValue / countValue).toFixed(2);
+    // Vérifier si des évaluations existent
+    let satisfactionValue = positiveEvaluationRate.data.result[0]?.value[1];
+    let satisfactionDisplay = "Aucun avis";
     
-    // Le taux de satisfaction est une donnée fictive pour l'instant
-    // Dans un cas réel, vous pourriez avoir une métrique spécifique pour cela
-    const satisfactionRate = "95%";
+    if (satisfactionValue && parseFloat(satisfactionValue) > 0) {
+      satisfactionDisplay = parseFloat(satisfactionValue).toFixed(0) + '%';
+    }
     
     return {
       totalMessages: parseInt(requestsValue).toLocaleString(),
-      responseTime: avgResponseTime + 's',
-      satisfactionRate: satisfactionRate,
+      responseTime: parseFloat(responseTimeValue).toFixed(2) + 's',
+      satisfactionRate: satisfactionDisplay,
       ragItems: parseInt(ragItemsValue).toLocaleString()
     };
   } catch (error) {
