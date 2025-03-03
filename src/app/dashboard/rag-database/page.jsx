@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 
 // Importer le fichier JSON
-import ragDataFile from '@/data/search_20250223_180928.json';
+import ragDataFile from '@/data/search.json';
 
 const ITEMS_PER_PAGE = 5; // Nombre d'entrées à afficher par page
 

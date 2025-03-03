@@ -5,16 +5,12 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import GeneralInfoTab from "@/components/rag-database/general-info-tab";
 import MessagesTab from "@/components/rag-database/messages-tab";
 import React from 'react';
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 
-// Importer le fichier JSON
-import ragDataFile from '@/data/search_20250223_180928.json';
 
 export default function EditRagEntryPage({ params }) {
   const router = useRouter();

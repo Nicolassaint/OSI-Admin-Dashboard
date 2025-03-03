@@ -11,8 +11,8 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [socket, setSocket] = useState(null);
   const [sortOrder, setSortOrder] = useState("desc");
+  const [wsConnected, setWsConnected] = useState(false);
 
   // Récupérer les conversations depuis l'API
   useEffect(() => {
@@ -27,7 +27,7 @@ export default function MessagesPage() {
       
       try {
         setLoading(true);
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
         const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
         
         console.log('Récupération des conversations depuis l\'API');
@@ -65,23 +65,16 @@ export default function MessagesPage() {
         }
       } catch (err) {
         console.error("Erreur lors de la récupération des conversations:", err);
-        setError("Impossible de charger les messages. Veuillez réessayer plus tard.");
         
-        // Utiliser des données de test en cas d'erreur pour le développement
-        setMessages([
-          {
-            id: "test-1",
-            user: "Utilisateur Test",
-            message: "Comment réinitialiser mon mot de passe ?",
-            response: "Pour réinitialiser votre mot de passe, veuillez vous rendre sur la page de connexion et cliquer sur 'Mot de passe oublié'.",
-            timestamp: new Date().toISOString(),
-            status: "pending",
-            evaluation: null,
-            video: null,
-            image: null,
-            buttons: []
-          }
-        ]);
+        // Vérifier si l'erreur est liée à un problème de connexion
+        if (err.name === 'AbortError' || err.name === 'TypeError' || err.message.includes('Failed to fetch')) {
+          setError("Le backend n'est pas joignable. Veuillez vérifier votre connexion.");
+        } else {
+          setError("Impossible de charger les messages. Veuillez réessayer plus tard.");
+        }
+        
+        // Ne pas définir de messages par défaut en cas d'erreur
+        setMessages([]);
       } finally {
         setLoading(false);
         fetchInProgress.current = false;
@@ -96,93 +89,132 @@ export default function MessagesPage() {
     // Vérifier si nous sommes côté client
     if (typeof window === 'undefined') return;
     
-    // Si une connexion existe déjà, ne pas en créer une nouvelle
-    if (socket !== null) {
-      console.log('Connexion WebSocket déjà établie ou en cours d\'établissement');
-      return;
-    }
+    let ws = null;
+    let reconnectTimeout = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 3;
     
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-    const wsUrl = apiUrl.replace('http', 'ws');
-    const wsToken = process.env.NEXT_PUBLIC_WEBSOCKET_TOKEN;
-    
-    console.log('Création d\'une nouvelle connexion WebSocket');
-    
-    try {
-      const newSocket = new WebSocket(`${wsUrl}/ws?token=${wsToken}`);
+    const connectWebSocket = () => {
+      // Éviter les connexions multiples
+      if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+        console.log('Connexion WebSocket déjà établie ou en cours d\'établissement');
+        return;
+      }
       
-      newSocket.onopen = () => {
-        console.log('WebSocket connecté');
-      };
+      // Limiter les tentatives de reconnexion
+      if (reconnectAttempts >= maxReconnectAttempts) {
+        console.error("Nombre maximum de tentatives de reconnexion atteint. Le backend n'est probablement pas disponible.");
+        setError("Le serveur de messages n'est pas joignable. Veuillez vérifier que le backend est en cours d'exécution.");
+        setWsConnected(false);
+        return;
+      }
       
-      newSocket.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          console.log("Données WebSocket reçues:", message);
-          
-          // Vérifier si c'est un message de type 'new_conversation'
-          if (message.type === 'new_conversation' && message.data) {
-            const data = message.data;
+      console.log('Création d\'une nouvelle connexion WebSocket');
+      
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        const wsUrl = apiUrl.replace('http', 'ws');
+        const wsToken = process.env.NEXT_PUBLIC_WEBSOCKET_TOKEN;
+        
+        ws = new WebSocket(`${wsUrl}/ws?token=${wsToken}`);
+        
+        ws.onopen = () => {
+          console.log('WebSocket connecté');
+          reconnectAttempts = 0; // Réinitialiser le compteur après une connexion réussie
+          setWsConnected(true);
+          setError(null); // Effacer les erreurs précédentes
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            console.log("Données WebSocket reçues:", message);
             
-            // Vérifier si les données ont la structure attendue
-            if (!data || (!data.id && !data._id)) {
-              console.error("Données WebSocket invalides:", data);
-              return;
-            }
-            
-            // Transformer la nouvelle conversation au format attendu
-            const formattedMessage = {
-              id: data.id || data._id,
-              user: "Utilisateur",
-              message: data.user_message || "",
-              response: data.response || "",
-              timestamp: data.timestamp || new Date().toISOString(),
-              status: data.evaluation ? "resolved" : "pending",
-              evaluation: data.evaluation,
-              video: data.video,
-              image: data.image,
-              buttons: data.buttons || []
-            };
-            
-            // Ajouter le nouveau message ou mettre à jour un existant
-            setMessages(prevMessages => {
-              const exists = prevMessages.some(msg => msg.id === formattedMessage.id);
-              if (exists) {
-                return prevMessages.map(msg => 
-                  msg.id === formattedMessage.id ? formattedMessage : msg
-                );
-              } else {
-                return [formattedMessage, ...prevMessages];
+            // Vérifier si c'est un message de type 'new_conversation'
+            if (message.type === 'new_conversation' && message.data) {
+              const data = message.data;
+              
+              // Vérifier si les données ont la structure attendue
+              if (!data || (!data.id && !data._id)) {
+                console.error("Données WebSocket invalides:", data);
+                return;
               }
-            });
-          } else {
-            console.log("Message WebSocket ignoré (type non géré):", message);
+              
+              // Transformer la nouvelle conversation au format attendu
+              const formattedMessage = {
+                id: data.id || data._id,
+                user: "Utilisateur",
+                message: data.user_message || "",
+                response: data.response || "",
+                timestamp: data.timestamp || new Date().toISOString(),
+                status: data.evaluation ? "resolved" : "pending",
+                evaluation: data.evaluation,
+                video: data.video,
+                image: data.image,
+                buttons: data.buttons || []
+              };
+              
+              // Ajouter le nouveau message ou mettre à jour un existant
+              setMessages(prevMessages => {
+                const exists = prevMessages.some(msg => msg.id === formattedMessage.id);
+                if (exists) {
+                  return prevMessages.map(msg => 
+                    msg.id === formattedMessage.id ? formattedMessage : msg
+                  );
+                } else {
+                  return [formattedMessage, ...prevMessages];
+                }
+              });
+            } else {
+              console.log("Message WebSocket ignoré (type non géré):", message);
+            }
+          } catch (err) {
+            console.error("Erreur lors du traitement du message WebSocket:", err, "Données brutes:", event.data);
           }
-        } catch (err) {
-          console.error("Erreur lors du traitement du message WebSocket:", err, "Données brutes:", event.data);
-        }
-      };
-      
-      newSocket.onerror = (error) => {
-        console.error('Erreur WebSocket:', error);
-      };
-      
-      newSocket.onclose = () => {
-        console.log('WebSocket déconnecté');
-      };
-      
-      setSocket(newSocket);
-      
-      // Nettoyer la connexion WebSocket lors du démontage du composant
-      return () => {
-        if (newSocket.readyState === WebSocket.OPEN) {
-          console.log('Fermeture de la connexion WebSocket');
-          newSocket.close();
-        }
-      };
-    } catch (error) {
-      console.error("Erreur lors de la création du WebSocket:", error);
-    }
+        };
+        
+        ws.onerror = (error) => {
+          console.error('Erreur WebSocket:', error);
+          setWsConnected(false);
+        };
+        
+        ws.onclose = () => {
+          console.log('WebSocket déconnecté');
+          setWsConnected(false);
+          
+          // Tentative de reconnexion avec délai exponentiel
+          if (reconnectAttempts < maxReconnectAttempts) {
+            reconnectAttempts++;
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Délai exponentiel plafonné à 30s
+            
+            console.log(`Tentative de reconnexion WebSocket dans ${delay/1000} secondes (tentative ${reconnectAttempts}/${maxReconnectAttempts})`);
+            
+            reconnectTimeout = setTimeout(() => {
+              connectWebSocket();
+            }, delay);
+          } else {
+            setError("Le serveur de messages n'est pas joignable. Veuillez vérifier que le backend est en cours d'exécution.");
+          }
+        };
+      } catch (error) {
+        console.error("Erreur lors de la création du WebSocket:", error);
+        setError("Impossible de se connecter au serveur de messages");
+        setWsConnected(false);
+      }
+    };
+    
+    connectWebSocket();
+    
+    // Nettoyer la connexion WebSocket lors du démontage du composant
+    return () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        console.log('Fermeture de la connexion WebSocket');
+        ws.close();
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+    };
   }, []); // Dépendance vide pour n'exécuter qu'une seule fois
 
   // Modifier la fonction de filtrage pour inclure le tri
@@ -251,6 +283,21 @@ export default function MessagesPage() {
           <MessageSort sortOrder={sortOrder} setSortOrder={setSortOrder} />
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

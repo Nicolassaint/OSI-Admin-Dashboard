@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 // Chemin vers le fichier JSON
-const dataFilePath = path.join(process.cwd(), 'src/data/search_20250223_180928.json');
+const dataFilePath = path.join(process.cwd(), 'src/data/search.json');
 
 // Ajouter cette configuration pour désactiver la génération de chemins statiques
 export const dynamic = 'force-dynamic';

@@ -12,7 +12,7 @@ export function RecentActivity() {
     const fetchRecentMessages = async () => {
       try {
         setLoading(true);
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
         const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
         
         const response = await fetch(`${apiUrl}/api/conversations?token=${apiToken}`, {
@@ -36,7 +36,12 @@ export function RecentActivity() {
         setRecentMessages(sortedMessages);
       } catch (err) {
         console.error("Erreur lors de la récupération des messages récents:", err);
-        setError("Impossible de charger les messages récents.");
+        // Vérifier si l'erreur est liée à un problème de connexion
+        if (err.name === 'AbortError' || err.name === 'TypeError' || err.message.includes('Failed to fetch')) {
+          setError("Le backend n'est pas joignable. Veuillez vérifier votre connexion.");
+        } else {
+          setError("Impossible de charger les messages récents.");
+        }
       } finally {
         setLoading(false);
       }
