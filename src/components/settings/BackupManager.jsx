@@ -1,5 +1,5 @@
 // Nouveau composant: src/components/settings/BackupManager.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -39,7 +39,8 @@ export default function BackupManager() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [visibleItems, setVisibleItems] = useState(0);
+  const tableContainerRef = useRef(null);
   const [totalBackups, setTotalBackups] = useState(0);
 
   const fetchBackups = async () => {
@@ -62,6 +63,7 @@ export default function BackupManager() {
       const data = await response.json();
       setBackups(data.backups || []);
       setTotalBackups(data.backups.length);
+      setFilteredBackups(data.backups || []);
       toast.success("Sauvegardes récupérées", {
         description: data.message
       });
@@ -236,21 +238,48 @@ export default function BackupManager() {
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('fr-FR', {
+    return date.toLocaleString('fr-FR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
+      minute: '2-digit',
+      timeZone: 'UTC'
+    });
   };
 
-  // Pagination
-  const totalPages = Math.ceil(filteredBackups.length / itemsPerPage);
+  // Calculer le nombre d'éléments visibles en fonction de la hauteur du conteneur
+  const calculateVisibleItems = () => {
+    if (!tableContainerRef.current) return;
+    
+    const rowHeight = 53; // hauteur d'une ligne en pixels
+    const containerHeight = tableContainerRef.current.clientHeight;
+    const visibleRows = Math.floor(containerHeight / rowHeight);
+    setVisibleItems(Math.max(5, visibleRows)); // Au moins 5 éléments visibles
+  };
+
+  // Observer les changements de taille
+  useEffect(() => {
+    const resizeObserver = new ResizeObserver(calculateVisibleItems);
+    
+    if (tableContainerRef.current) {
+      resizeObserver.observe(tableContainerRef.current);
+    }
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // Calcul de la pagination
+  const totalPages = Math.max(1, Math.ceil(filteredBackups.length / (visibleItems || 5)));
   const paginatedBackups = filteredBackups.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    (currentPage - 1) * (visibleItems || 5),
+    currentPage * (visibleItems || 5)
   );
+
+  // Reset la page courante quand les filtres changent
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   return (
     <Card className="w-full h-full flex flex-col">
@@ -264,6 +293,7 @@ export default function BackupManager() {
           </div>
           <Badge variant="outline" className="ml-2">
             {totalBackups} sauvegarde{totalBackups !== 1 ? 's' : ''}
+            {filteredBackups.length !== totalBackups && ` (${filteredBackups.length} filtré${filteredBackups.length !== 1 ? 's' : ''})`}
           </Badge>
         </div>
       </CardHeader>
@@ -326,10 +356,13 @@ export default function BackupManager() {
           </div>
         )}
         
-        <div className="border rounded-md flex-grow">
-          <ScrollArea className="h-[300px]">
+        <div 
+          className="border rounded-md flex-grow overflow-hidden"
+          ref={tableContainerRef}
+        >
+          <ScrollArea className="h-full">
             <Table>
-              <TableHeader className="sticky top-0 bg-white dark:bg-gray-800 z-10">
+              <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
                   <TableHead>Nom</TableHead>
                   <TableHead>Date</TableHead>
@@ -338,8 +371,8 @@ export default function BackupManager() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  Array(5).fill(0).map((_, index) => (
-                    <TableRow key={index}>
+                  Array(visibleItems || 5).fill(0).map((_, index) => (
+                    <TableRow key={index} className="h-[53px]">
                       <TableCell><Skeleton className="h-5 w-full" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                       <TableCell className="text-right">
@@ -350,8 +383,8 @@ export default function BackupManager() {
                       </TableCell>
                     </TableRow>
                   ))
-                ) : paginatedBackups.length === 0 ? (
-                  <TableRow>
+                ) : filteredBackups.length === 0 ? (
+                  <TableRow className="h-[53px]">
                     <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <ArchiveIcon className="h-8 w-8" />
@@ -372,7 +405,7 @@ export default function BackupManager() {
                   </TableRow>
                 ) : (
                   paginatedBackups.map((backup) => (
-                    <TableRow key={backup.name} className="group">
+                    <TableRow key={backup.name} className="group h-[53px]">
                       <TableCell className="font-medium max-w-[200px] truncate" title={backup.name}>
                         {backup.name}
                       </TableCell>
@@ -410,12 +443,14 @@ export default function BackupManager() {
           </ScrollArea>
         </div>
         
-        {filteredBackups.length > itemsPerPage && (
-          <Pagination 
-            currentPage={currentPage} 
-            totalPages={totalPages} 
-            onPageChange={setCurrentPage} 
-          />
+        {filteredBackups.length > (visibleItems || 5) && (
+          <div className="mt-4">
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
         )}
       </CardContent>
       
