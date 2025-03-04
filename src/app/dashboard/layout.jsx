@@ -30,6 +30,7 @@ function LoadingSpinner() {
           alt="OSI Logo Loading" 
           width={80} 
           height={80} 
+          priority
           className="rounded-full"
         />
       </div>
@@ -69,7 +70,8 @@ export default function DashboardLayout({ children }) {
               src="/OSI_logo.png" 
               alt="OSI Admin Logo" 
               width={80} 
-              height={80} 
+              height={80}
+              priority
               className="rounded-full"
             />
           </div>
