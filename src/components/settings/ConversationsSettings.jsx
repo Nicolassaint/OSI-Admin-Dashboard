@@ -229,7 +229,7 @@ export default function ConversationsSettings() {
 
       const result = await response.json();
       setUploadSuccess(true);
-      console.log(`Importation réussie: ${result.imported_count} conversations importées`);
+      // console.log(`Importation réussie: ${result.imported_count} conversations importées`);
       setTimeout(() => setUploadSuccess(false), 3000);
     } catch (error) {
       console.error("Erreur lors de l'importation des conversations:", error);

@@ -97,7 +97,7 @@ export default function MessagesPage() {
     const connectWebSocket = () => {
       // Éviter les connexions multiples
       if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
-        console.log('Connexion WebSocket déjà établie ou en cours d\'établissement');
+        // console.log('Connexion WebSocket déjà établie ou en cours d\'établissement');
         return;
       }
       
@@ -109,7 +109,7 @@ export default function MessagesPage() {
         return;
       }
       
-      console.log('Création d\'une nouvelle connexion WebSocket');
+      // console.log('Création d\'une nouvelle connexion WebSocket');
       
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -119,7 +119,7 @@ export default function MessagesPage() {
         ws = new WebSocket(`${wsUrl}/ws?token=${wsToken}`);
         
         ws.onopen = () => {
-          console.log('WebSocket connecté');
+          // console.log('WebSocket connecté');
           reconnectAttempts = 0; // Réinitialiser le compteur après une connexion réussie
           setWsConnected(true);
           setError(null); // Effacer les erreurs précédentes
@@ -128,7 +128,7 @@ export default function MessagesPage() {
         ws.onmessage = (event) => {
           try {
             const message = JSON.parse(event.data);
-            console.log("Données WebSocket reçues:", message);
+            // console.log("Données WebSocket reçues:", message);
             
             // Vérifier si c'est un message de type 'new_conversation'
             if (message.type === 'new_conversation' && message.data) {
@@ -166,7 +166,7 @@ export default function MessagesPage() {
                 }
               });
             } else {
-              console.log("Message WebSocket ignoré (type non géré):", message);
+              // console.log("Message WebSocket ignoré (type non géré):", message);
             }
           } catch (err) {
             console.error("Erreur lors du traitement du message WebSocket:", err, "Données brutes:", event.data);
@@ -179,7 +179,7 @@ export default function MessagesPage() {
         };
         
         ws.onclose = () => {
-          console.log('WebSocket déconnecté');
+          // console.log('WebSocket déconnecté');
           setWsConnected(false);
           
           // Tentative de reconnexion avec délai exponentiel
@@ -187,7 +187,7 @@ export default function MessagesPage() {
             reconnectAttempts++;
             const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Délai exponentiel plafonné à 30s
             
-            console.log(`Tentative de reconnexion WebSocket dans ${delay/1000} secondes (tentative ${reconnectAttempts}/${maxReconnectAttempts})`);
+            // console.log(`Tentative de reconnexion WebSocket dans ${delay/1000} secondes (tentative ${reconnectAttempts}/${maxReconnectAttempts})`);
             
             reconnectTimeout = setTimeout(() => {
               connectWebSocket();
@@ -208,7 +208,7 @@ export default function MessagesPage() {
     // Nettoyer la connexion WebSocket lors du démontage du composant
     return () => {
       if (ws && ws.readyState === WebSocket.OPEN) {
-        console.log('Fermeture de la connexion WebSocket');
+        // console.log('Fermeture de la connexion WebSocket');
         ws.close();
       }
       if (reconnectTimeout) {

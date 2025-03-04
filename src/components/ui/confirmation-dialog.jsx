@@ -18,7 +18,7 @@ export default function ConfirmationDialog({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full animate-in fade-in slide-in-from-bottom-10 duration-300">
         <h3 className="text-lg font-semibold mb-4">{title}</h3>
-        <p className="mb-6">{message}</p>
+        <div className="mb-6">{message}</div>
         <div className="flex justify-end space-x-2">
           <Button 
             variant="outline" 

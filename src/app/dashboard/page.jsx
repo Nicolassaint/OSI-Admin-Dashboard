@@ -31,7 +31,7 @@ async function fetchDashboardMetrics() {
     }
     
     const data = await response.json();
-    console.log("Données métriques reçues:", data);
+    // console.log("Données métriques reçues:", data);
     
     // Formatage des données pour l'affichage avec vérification des valeurs undefined
     return {
@@ -92,7 +92,7 @@ export default function DashboardPage() {
     const connectWebSocket = () => {
       // Éviter les connexions multiples
       if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
-        console.log('Connexion WebSocket déjà établie ou en cours d\'établissement');
+        // console.log('Connexion WebSocket déjà établie ou en cours d\'établissement');
         return;
       }
       
@@ -104,7 +104,7 @@ export default function DashboardPage() {
         return;
       }
       
-      console.log('Création d\'une nouvelle connexion WebSocket pour les métriques');
+      // console.log('Création d\'une nouvelle connexion WebSocket pour les métriques');
       
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -114,7 +114,7 @@ export default function DashboardPage() {
         ws = new WebSocket(`${wsUrl}/ws?token=${wsToken}`);
         
         ws.onopen = () => {
-          console.log('WebSocket connecté pour les métriques');
+          // console.log('WebSocket connecté pour les métriques');
           reconnectAttempts = 0; // Réinitialiser le compteur après une connexion réussie
           setWsConnected(true);
           setMetricsError(null);
@@ -122,13 +122,13 @@ export default function DashboardPage() {
         
         ws.onmessage = (event) => {
           try {
-            console.log("Message WebSocket brut reçu:", event.data);
+            // console.log("Message WebSocket brut reçu:", event.data);
             const message = JSON.parse(event.data);
-            console.log("Message WebSocket parsé:", message);
+            // console.log("Message WebSocket parsé:", message);
             
             // Vérifier si c'est un message de type 'metrics_update'
             if (message.type === 'metrics_update' && message.data) {
-              console.log("Mise à jour des métriques reçue:", message.data);
+              // console.log("Mise à jour des métriques reçue:", message.data);
               
               const data = message.data;
               
@@ -151,7 +151,7 @@ export default function DashboardPage() {
         };
         
         ws.onclose = () => {
-          console.log('WebSocket déconnecté pour les métriques');
+          // console.log('WebSocket déconnecté pour les métriques');
           setWsConnected(false);
           
           // Tentative de reconnexion avec délai exponentiel
@@ -159,7 +159,7 @@ export default function DashboardPage() {
             reconnectAttempts++;
             const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Délai exponentiel plafonné à 30s
             
-            console.log(`Tentative de reconnexion WebSocket dans ${delay/1000} secondes (tentative ${reconnectAttempts}/${maxReconnectAttempts})`);
+            // console.log(`Tentative de reconnexion WebSocket dans ${delay/1000} secondes (tentative ${reconnectAttempts}/${maxReconnectAttempts})`);
             
             reconnectTimeout = setTimeout(() => {
               connectWebSocket();
@@ -180,7 +180,7 @@ export default function DashboardPage() {
     return () => {
       // Nettoyage lors du démontage du composant
       if (ws && ws.readyState === WebSocket.OPEN) {
-        console.log('Fermeture de la connexion WebSocket pour les métriques');
+        // console.log('Fermeture de la connexion WebSocket pour les métriques');
         ws.close();
       }
       if (reconnectTimeout) {

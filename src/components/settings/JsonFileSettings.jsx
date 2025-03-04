@@ -1,24 +1,27 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Upload, Download, Share2 } from "lucide-react";
+import { AlertCircle, Upload, Download, Share2, Trash2 } from "lucide-react";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
-import path from 'path';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function JsonFileSettings() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadError, setUploadError] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
-  const [isTransferring, setIsTransferring] = useState(false);
-  const [transferError, setTransferError] = useState(null);
-  const [transferSuccess, setTransferSuccess] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
   
   // États pour les dialogues de confirmation
   const [showImportConfirm, setShowImportConfirm] = useState(false);
-  const [showTransferConfirm, setShowTransferConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
+
+  // États pour le message de succès
+  const [exportSuccess, setExportSuccess] = useState(false);
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -56,7 +59,7 @@ export default function JsonFileSettings() {
       }
 
       // Envoyer le contenu JSON au serveur
-      const response = await fetch('/api/rag-database', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/data`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`,
@@ -67,7 +70,7 @@ export default function JsonFileSettings() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Erreur: ${response.status}`);
+        throw new Error(errorData.detail);
       }
 
       setUploadSuccess(true);
@@ -86,7 +89,7 @@ export default function JsonFileSettings() {
     setExportError(null);
 
     try {
-      const response = await fetch('/api/rag-database', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/data`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
@@ -95,28 +98,23 @@ export default function JsonFileSettings() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Erreur: ${response.status}`);
+        throw new Error(errorData.detail);
       }
 
-      const data = await response.json();
+      // Récupérer les données JSON et extraire uniquement la partie 'data'
+      const responseData = await response.json();
+      const data = responseData.data;
       
-      // Créer un fichier à télécharger
+      // Créer un fichier à télécharger avec les données
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
+      
+      // Générer un nom de fichier avec la date actuelle
+      const now = new Date();
+      const timestamp = now.toISOString().split('T')[0];
       const a = document.createElement('a');
       a.href = url;
-      
-      // Générer un nom de fichier avec la date et l'heure actuelles jusqu'à la seconde
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
-      const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}`;
-      
-      a.download = `search_${timestamp}.json`;
+      a.download = `rag_data_${timestamp}.json`;
       
       document.body.appendChild(a);
       a.click();
@@ -126,7 +124,11 @@ export default function JsonFileSettings() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }, 0);
-      
+
+      // Afficher le message de succès
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 3000);
+
     } catch (error) {
       console.error("Erreur lors de l'exportation des données:", error);
       setExportError(error.message);
@@ -135,67 +137,36 @@ export default function JsonFileSettings() {
     }
   };
 
-  const initiateTransfer = () => {
-    setShowTransferConfirm(true);
+  const initiateDelete = () => {
+    setShowDeleteConfirm(true);
   };
 
-  const handleTransferData = async () => {
-    setIsTransferring(true);
-    setTransferError(null);
-    setTransferSuccess(false);
-    setShowTransferConfirm(false);
-  
+  const handleDeleteData = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    setDeleteSuccess(false);
+    setShowDeleteConfirm(false);
+
     try {
-      // 1. Récupérer les données actuelles
-      const getResponse = await fetch('/api/rag-database', {
-        method: 'GET',
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/delete`, {
+        method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
         }
       });
-  
-      if (!getResponse.ok) {
-        const errorData = await getResponse.json();
-        throw new Error(errorData.error || `Erreur: ${getResponse.status}`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail);
       }
-  
-      const data = await getResponse.json();
-      
-      // 2. Créer une sauvegarde locale avant transfert
-      const backupResponse = await fetch('/api/backup', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
-        }
-      });
-  
-      if (!backupResponse.ok) {
-        console.warn("Échec de la sauvegarde locale avant transfert");
-      }
-      
-      // 3. Envoyer à l'API Python
-      const pythonApiUrl = process.env.NEXT_PUBLIC_PYTHON_API_URL + '/rag/sync';
-      const transferResponse = await fetch(pythonApiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_PYTHON_API_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-      });
-  
-      if (!transferResponse.ok) {
-        const errorData = await transferResponse.json();
-        throw new Error(errorData.error || `Erreur API Python: ${transferResponse.status}`);
-      }
-  
-      setTransferSuccess(true);
-      setTimeout(() => setTransferSuccess(false), 3000);
+
+      setDeleteSuccess(true);
+      setTimeout(() => setDeleteSuccess(false), 3000);
     } catch (error) {
-      console.error("Erreur lors du transfert des données:", error);
-      setTransferError(error.message);
+      console.error("Erreur lors de la suppression des données:", error);
+      setDeleteError(error.message);
     } finally {
-      setIsTransferring(false);
+      setIsDeleting(false);
     }
   };
 
@@ -204,7 +175,7 @@ export default function JsonFileSettings() {
       <CardHeader>
         <CardTitle>Gestion du RAG</CardTitle>
         <CardDescription>
-          Importer, exporter ou transférer des données JSON
+          Importer, exporter ou supprimer des données JSON
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -241,7 +212,7 @@ export default function JsonFileSettings() {
         </div>
         
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">Exportation et transfert</h3>
+          <h3 className="text-lg font-medium">Exportation et suppression</h3>
           <div className="grid gap-4 md:grid-cols-2">
             <Button 
               variant="outline" 
@@ -255,14 +226,21 @@ export default function JsonFileSettings() {
             
             <Button 
               variant="outline" 
-              onClick={initiateTransfer}
-              disabled={isTransferring}
-              className="flex items-center justify-center"
+              onClick={initiateDelete}
+              disabled={isDeleting}
+              className="flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
             >
-              <Share2 className="mr-2 h-4 w-4" />
-              {isTransferring ? "Transfert..." : "Transférer les données"}
+              <Trash2 className="mr-2 h-4 w-4" />
+              {isDeleting ? "Suppression..." : "Supprimer les données"}
             </Button>
           </div>
+          
+          {exportSuccess && (
+            <p className="text-sm text-green-600 flex items-start">
+              <AlertCircle className="mr-1 h-4 w-4 flex-shrink-0 mt-0.5" />
+              <span>Les données ont été exportées avec succès.</span>
+            </p>
+          )}
           
           {exportError && (
             <div className="text-sm text-red-600 flex items-start">
@@ -271,14 +249,17 @@ export default function JsonFileSettings() {
             </div>
           )}
           
-          {transferSuccess && (
-            <p className="text-sm text-green-600">Données transférées avec succès.</p>
+          {deleteSuccess && (
+            <p className="text-sm text-green-600 flex items-start">
+              <AlertCircle className="mr-1 h-4 w-4 flex-shrink-0 mt-0.5" />
+              <span>Les données ont été supprimées avec succès.</span>
+            </p>
           )}
           
-          {transferError && (
+          {deleteError && (
             <div className="text-sm text-red-600 flex items-start">
               <AlertCircle className="mr-1 h-4 w-4 flex-shrink-0 mt-0.5" />
-              <span>Erreur lors du transfert: {transferError}</span>
+              <span>Erreur lors de la suppression: {deleteError}</span>
             </div>
           )}
         </div>
@@ -298,15 +279,15 @@ export default function JsonFileSettings() {
         isLoading={isImporting}
       />
 
-      {/* Dialogue de confirmation pour le transfert */}
+      {/* Dialogue de confirmation pour la suppression */}
       <ConfirmationDialog
-        isOpen={showTransferConfirm}
-        onClose={() => setShowTransferConfirm(false)}
-        onConfirm={handleTransferData}
-        title="Confirmer le transfert"
-        message="Êtes-vous sûr de vouloir transférer les données ? Cette action pourrait affecter les données existantes sur le serveur distant."
-        confirmLabel="Transférer"
-        isLoading={isTransferring}
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteData}
+        title="Confirmer la suppression"
+        message="Êtes-vous sûr de vouloir supprimer toutes les données ? Cette action est irréversible, mais une sauvegarde sera créée automatiquement."
+        confirmLabel="Supprimer"
+        isLoading={isDeleting}
       />
     </Card>
   );

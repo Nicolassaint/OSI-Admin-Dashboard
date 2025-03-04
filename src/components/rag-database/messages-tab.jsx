@@ -154,40 +154,40 @@ export default function MessagesTab({ entry, setEntry }) {
       </div>
       
       {entry.details.messages.length > 0 && (
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-3">
-            <Card>
-              <CardContent className="p-0">
-                <ul className="divide-y">
-                  {entry.details.messages.map((message, idx) => (
-                    <li 
-                      key={idx}
-                      className={`p-3 cursor-pointer flex justify-between items-center ${
-                        idx === activeMessageIndex 
-                          ? 'bg-primary/10 border-l-4 border-primary' 
-                          : 'hover:bg-muted/50'
-                      }`}
-                      onClick={() => setActiveMessageIndex(idx)}
-                    >
-                      <span className="font-medium truncate">
-                        {message.label || `Message ${idx + 1}`}
-                      </span>
-                      {entry.details.messages.length > 1 && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeMessage(idx);
-                          }}
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
+  <div className="grid grid-cols-12 gap-4">
+    <div className="col-span-3">
+      <Card>
+        <CardContent className="p-0">
+          <ul className="divide-y">
+            {entry.details.messages.map((message, idx) => (
+              <li 
+                key={idx}
+                className={`p-3 cursor-pointer flex justify-between items-center ${
+                  idx === activeMessageIndex 
+                    ? 'bg-primary/10 border-l-4 border-primary' 
+                    : 'hover:bg-muted/50'
+                }`}
+                onClick={() => setActiveMessageIndex(idx)}
+              >
+                <span className="font-medium truncate">
+                  {message.label || `Message ${idx + 1}`}
+                </span>
+                {entry.details.messages.length > 1 && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeMessage(idx);
+                    }}
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </CardContent>
             </Card>
           </div>
           

@@ -40,13 +40,14 @@ export default function BackupManager() {
   const [deleteError, setDeleteError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [totalBackups, setTotalBackups] = useState(0);
 
   const fetchBackups = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await fetch('/api/backup', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/backup`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
@@ -55,12 +56,16 @@ export default function BackupManager() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Erreur: ${response.status}`);
+        throw new Error(errorData.detail || `Erreur: ${response.status}`);
       }
 
       const data = await response.json();
-      setBackups(data.backups);
-      setCurrentPage(1); // Réinitialiser à la première page après chargement
+      setBackups(data.backups || []);
+      setTotalBackups(data.backups.length);
+      toast.success("Sauvegardes récupérées", {
+        description: data.message
+      });
+      setCurrentPage(1);
     } catch (error) {
       console.error("Erreur lors de la récupération des sauvegardes:", error);
       setError(error.message);
@@ -73,16 +78,30 @@ export default function BackupManager() {
     fetchBackups();
   }, []);
 
-  // Filtrer les sauvegardes en fonction du terme de recherche
+  // Fonction améliorée de filtrage
   useEffect(() => {
     if (searchTerm.trim() === "") {
       setFilteredBackups(backups);
     } else {
-      const filtered = backups.filter(backup => 
-        backup.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const searchLower = searchTerm.toLowerCase();
+      const filtered = backups.filter(backup => {
+        // Formatage de la date de la sauvegarde au même format que l'affichage
+        const backupDate = formatDate(backup.date).toLowerCase();
+        
+        return (
+          // Recherche dans le nom du fichier
+          backup.name.toLowerCase().includes(searchLower) ||
+          // Recherche par date formatée (JJ/MM/AAAA HH:mm)
+          backupDate.includes(searchLower) ||
+          // Recherche par date partielle (JJ/MM/AAAA)
+          backupDate.split(" ")[0].includes(searchLower) ||
+          // Recherche par heure (HH:mm)
+          backupDate.split(" ")[1]?.includes(searchLower)
+        );
+      });
+      
       setFilteredBackups(filtered);
-      setCurrentPage(1); // Réinitialiser à la première page après filtrage
+      setCurrentPage(1);
     }
   }, [searchTerm, backups]);
 
@@ -96,7 +115,7 @@ export default function BackupManager() {
     setShowCreateConfirm(false);
     
     try {
-      const response = await fetch('/api/backup', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/backup`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
@@ -105,21 +124,17 @@ export default function BackupManager() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Erreur: ${response.status}`);
+        throw new Error(errorData.detail || `Erreur: ${response.status}`);
       }
 
-      // Afficher un toast de succès
       toast.success("Sauvegarde créée", {
         description: "La sauvegarde a été créée avec succès"
       });
 
-      // Rafraîchir la liste des sauvegardes
       fetchBackups();
     } catch (error) {
       console.error("Erreur lors de la création de la sauvegarde:", error);
       setCreateError(error.message);
-      
-      // Afficher un toast d'erreur
       toast.error("Erreur", {
         description: `Échec de la création: ${error.message}`
       });
@@ -141,7 +156,7 @@ export default function BackupManager() {
     setRestoreSuccess(false);
     
     try {
-      const response = await fetch(`/api/backup/restore`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/backup/restore`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`,
@@ -152,29 +167,22 @@ export default function BackupManager() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Erreur: ${response.status}`);
+        throw new Error(errorData.detail || `Erreur: ${response.status}`);
       }
 
-      // Afficher le message de succès
       setRestoreSuccess(true);
-      
-      // Afficher un toast de succès
       toast.success("Restauration réussie", {
         description: "La sauvegarde a été restaurée avec succès"
       });
       
-      // Masquer le message après 5 secondes
       setTimeout(() => {
         setRestoreSuccess(false);
       }, 5000);
 
-      // Rafraîchir la liste
       fetchBackups();
     } catch (error) {
       console.error("Erreur lors de la restauration:", error);
       setError(error.message);
-      
-      // Afficher un toast d'erreur
       toast.error("Erreur", {
         description: `Échec de la restauration: ${error.message}`
       });
@@ -197,7 +205,7 @@ export default function BackupManager() {
     setDeleteError(null);
     
     try {
-      const response = await fetch(`/api/backup?filename=${selectedBackup.name}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/backup?filename=${selectedBackup.name}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
@@ -206,21 +214,17 @@ export default function BackupManager() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Erreur: ${response.status}`);
+        throw new Error(errorData.detail || `Erreur: ${response.status}`);
       }
 
-      // Afficher un toast de succès
       toast.success("Suppression réussie", {
         description: "La sauvegarde a été supprimée avec succès"
       });
 
-      // Rafraîchir la liste
       fetchBackups();
     } catch (error) {
       console.error("Erreur lors de la suppression:", error);
       setDeleteError(error.message);
-      
-      // Afficher un toast d'erreur
       toast.error("Erreur", {
         description: `Échec de la suppression: ${error.message}`
       });
@@ -259,7 +263,7 @@ export default function BackupManager() {
             </CardDescription>
           </div>
           <Badge variant="outline" className="ml-2">
-            {backups.length} sauvegarde{backups.length !== 1 ? 's' : ''}
+            {totalBackups} sauvegarde{totalBackups !== 1 ? 's' : ''}
           </Badge>
         </div>
       </CardHeader>
@@ -274,7 +278,11 @@ export default function BackupManager() {
           </Button>
           
           <div className="flex items-center gap-2">
-            <MessageSearch searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+            <MessageSearch 
+              searchTerm={searchTerm} 
+              setSearchTerm={setSearchTerm}
+              placeholder="Rechercher par date (JJ/MM/AAAA) ou heure (HH:mm)..."
+            />
             <Button 
               variant="outline" 
               onClick={fetchBackups} 
@@ -418,11 +426,11 @@ export default function BackupManager() {
         title="Confirmer la création"
         message={
           <div className="space-y-2">
-            <p>Êtes-vous sûr de vouloir créer une nouvelle sauvegarde ?</p>
-            <p className="text-blue-600 flex items-center">
+            <span className="block">Êtes-vous sûr de vouloir créer une nouvelle sauvegarde ?</span>
+            <span className="block text-blue-600 flex items-center">
               <ArchiveIcon className="mr-2 h-4 w-4" />
               Une nouvelle sauvegarde de vos données sera créée.
-            </p>
+            </span>
           </div>
         }
         confirmLabel={
@@ -444,14 +452,14 @@ export default function BackupManager() {
         title="Confirmer la restauration"
         message={
           <div className="space-y-2">
-            <p>Êtes-vous sûr de vouloir restaurer la sauvegarde :</p>
+            <span className="block">Êtes-vous sûr de vouloir restaurer la sauvegarde :</span>
             <div className="font-medium bg-muted p-2 rounded-md">
               {selectedBackup?.name}
             </div>
-            <p className="text-amber-600 flex items-center">
+            <div className="text-amber-600 flex items-center">
               <ExclamationTriangleIcon className="mr-2 h-4 w-4" />
               Cette action remplacera toutes les données actuelles.
-            </p>
+            </div>
           </div>
         }
         confirmLabel={
@@ -473,14 +481,14 @@ export default function BackupManager() {
         title="Confirmer la suppression"
         message={
           <div className="space-y-2">
-            <p>Êtes-vous sûr de vouloir supprimer définitivement la sauvegarde :</p>
+            <span className="block">Êtes-vous sûr de vouloir supprimer définitivement la sauvegarde :</span>
             <div className="font-medium bg-muted p-2 rounded-md">
               {selectedBackup?.name}
             </div>
-            <p className="text-red-600 flex items-center">
+            <div className="text-red-600 flex items-center">
               <ExclamationTriangleIcon className="mr-2 h-4 w-4" />
               Cette action est irréversible.
-            </p>
+            </div>
           </div>
         }
         confirmLabel={

@@ -10,7 +10,7 @@ import MessagesTab from "@/components/rag-database/messages-tab";
 import React from 'react';
 import { toast } from "sonner";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
-
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function EditRagEntryPage({ params }) {
   const router = useRouter();
@@ -22,6 +22,9 @@ export default function EditRagEntryPage({ params }) {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
   const [confirmSave, setConfirmSave] = useState(false);
+  const [apiError, setApiError] = useState(null);
+  const [saveError, setSaveError] = useState(null);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     if (isNewEntry) {
@@ -49,7 +52,7 @@ export default function EditRagEntryPage({ params }) {
       });
       setLoading(false);
     } else {
-      // Charger l'entrée existante depuis l'API
+      // Charger les données depuis l'API
       fetchEntry();
     }
   }, [id, isNewEntry]);
@@ -57,53 +60,53 @@ export default function EditRagEntryPage({ params }) {
   const fetchEntry = async () => {
     try {
       setLoading(true);
+      setApiError(null);
       
-      // Décoder l'ID pour gérer les caractères spéciaux
       const decodedId = decodeURIComponent(id);
+      const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
       
-      // Appel API pour récupérer l'entrée
-      const response = await fetch(`/api/rag-database/${encodeURIComponent(decodedId)}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/data/${encodeURIComponent(decodedId)}?token=${apiToken}`);
       
       if (!response.ok) {
-        throw new Error(`Erreur lors de la récupération de l'entrée: ${response.status}`);
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
       }
       
-      const data = await response.json();
+      const responseData = await response.json();
+      const data = responseData.data; // Accéder aux données dans la propriété "data"
       
-      // Convertir les données au format attendu par le composant
+      // Convertir les données au format attendu
       const formattedEntry = {
         id: decodedId,
-        name: data.name,
-        description: data.description,
-        search: data.search,
-        isDecisionTree: data.details?.Messages && data.details.Messages.length > 1,
+        name: data.name || "",
+        description: data.description || "",
+        search: data.search || "",
+        isDecisionTree: Boolean(data.details?.Messages && data.details.Messages.length > 1),
         details: {
-          label: data.details?.Label,
-          messages: data.details?.Messages?.map(message => ({
-            label: message.Label,
-            description: message.Description,
-            bubbles: message.Bubbles?.map(bubble => ({
-              text: bubble.Text,
-              image: bubble.Image,
-              video: bubble.Video,
-              order: bubble.Order
-            })) || [],
-            buttons: message.Buttons?.map(button => ({
-              label: button.Label,
-              link: button.Link,
-              type: button.Type,
-              order: button.Order
-            })) || []
-          })) || []
+          label: data.details?.Label || "",
+          messages: (data.details?.Messages || []).map(message => ({
+            label: message.Label || "",
+            description: message.Description || "",
+            bubbles: (message.Bubbles || []).map(bubble => ({
+              text: bubble.Text || "",
+              image: bubble.Image || "",
+              video: bubble.Video || "",
+              order: bubble.Order || 0
+            })),
+            buttons: (message.Buttons || []).map(button => ({
+              label: button.Label || "",
+              link: button.Link || "",
+              type: button.Type || "",
+              order: button.Order || 0
+            }))
+          }))
         }
       };
-      
+
       setEntry(formattedEntry);
+      setLoading(false);
     } catch (error) {
       console.error("Erreur lors du chargement de l'entrée:", error);
-      toast.error("Erreur lors du chargement de l'entrée");
-      router.push("/dashboard/rag-database");
-    } finally {
+      setApiError(error.message);
       setLoading(false);
     }
   };
@@ -111,113 +114,194 @@ export default function EditRagEntryPage({ params }) {
   const handleSave = async () => {
     try {
       setSaving(true);
+      setSaveError(null);
       
-      let response;
+      const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
+      const isUpdate = !isNewEntry;
       
-      if (isNewEntry) {
-        // Créer une nouvelle entrée
-        response = await fetch('/api/rag-database', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(entry),
-        });
-      } else {
-        // Mettre à jour une entrée existante
-        response = await fetch(`/api/rag-database/${encodeURIComponent(id)}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(entry),
-        });
-      }
+      // Formater les données pour correspondre exactement au format attendu par le backend
+      const formattedData = {
+        name: entry.name,
+        description: entry.description,
+        search: entry.search,
+        details: {
+          Label: entry.details.label,
+          Messages: entry.details.messages.map(message => ({
+            Label: message.label,
+            Description: message.description,
+            Bubbles: message.bubbles.map(bubble => ({
+              Text: bubble.text || "",
+              Image: bubble.image || "",
+              Video: bubble.video || "",
+              Order: bubble.order
+            })),
+            Buttons: message.buttons ? message.buttons.map(button => ({
+              Label: button.label,
+              Link: button.link || "",
+              Type: button.type || "link",
+              Order: button.order
+            })) : []
+          }))
+        }
+      };
+
+      // console.log('Données envoyées à l"API:', JSON.stringify(formattedData, null, 2));
+
+      // Correction de l'URL pour la création et la mise à jour
+      const apiUrl = isUpdate 
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/rag/data/${encodeURIComponent(entry.id)}?token=${apiToken}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/rag/data?token=${apiToken}`; // URL corrigée pour POST
       
-      if (response.ok) {
-        toast.success(isNewEntry ? "Entrée créée avec succès" : "Modifications enregistrées avec succès");
-        router.push("/dashboard/rag-database");
-      } else {
+      const response = await fetch(apiUrl, {
+        method: isUpdate ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedData),
+        signal: AbortSignal.timeout(15000)
+      });
+      
+      if (!response.ok) {
         const errorData = await response.json();
-        toast.error(`Erreur: ${errorData.error || "Une erreur est survenue"}`);
-        setSaving(false);
+        throw new Error(Array.isArray(errorData) ? errorData[0]?.msg : errorData.detail || `Erreur ${response.status}: ${response.statusText}`);
       }
+      
+      // Synchroniser les données RAG après la modification
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/sync?token=${apiToken}`, {
+          method: 'POST',
+          signal: AbortSignal.timeout(5000)
+        });
+      } catch (syncError) {
+        console.warn("Avertissement: Impossible de synchroniser les données après la sauvegarde", syncError);
+      }
+      
+      toast.success(isNewEntry ? "Entrée créée avec succès" : "Modifications enregistrées avec succès");
+      router.push("/dashboard/rag-database");
+      
     } catch (error) {
       console.error("Erreur lors de l'enregistrement:", error);
-      toast.error("Erreur lors de l'enregistrement");
-      setSaving(false);
+      setSaveError(error.message || "Une erreur est survenue lors de l'enregistrement");
     } finally {
+      setSaving(false);
       setConfirmSave(false);
+    }
+  };
+
+  // Fonction pour réessayer le chargement
+  const handleRetry = () => {
+    if (isNewEntry) {
+      setApiError(null);
+    } else {
+      fetchEntry();
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Chargement de l'entrée...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <Link href="/dashboard/rag-database">
-            <Button variant="outline" size="default" className="flex items-center gap-2 px-4 py-2 transition-colors hover:bg-muted">
-              <ArrowLeftIcon className="h-5 w-5" />
-              <span>Retour</span>
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {isNewEntry ? "Nouvelle entrée" : `Modifier: ${entry.name}`}
-          </h1>
-          {entry.isDecisionTree && (
-            <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
-              Arbre de décision
-            </span>
-          )}
-        </div>
+        <h1 className="text-3xl font-bold">
+          {isNewEntry ? "Nouvelle entrée" : "Modifier l'entrée"}
+        </h1>
         <div className="flex space-x-2">
           <Button variant="outline" onClick={() => router.push("/dashboard/rag-database")}>
-            Annuler
+            Retour à la liste
           </Button>
           <Button 
             onClick={() => setConfirmSave(true)}
-            disabled={saving}
+            disabled={saving || loadError}
           >
             Enregistrer
           </Button>
         </div>
       </div>
 
-      <div className="w-full border-b mb-6">
-        <div className="flex">
-          <button 
-            className={`px-4 py-2 font-medium ${activeTab === "general" ? "border-b-2 border-primary" : ""}`}
-            onClick={() => setActiveTab("general")}
-          >
-            Informations générales
-          </button>
-          <button 
-            className={`px-4 py-2 font-medium ${activeTab === "messages" ? "border-b-2 border-primary" : ""}`}
-            onClick={() => setActiveTab("messages")}
-          >
-            Messages
-          </button>
-        </div>
-      </div>
-      
-      {activeTab === "general" && (
-        <div className="space-y-4">
-          <GeneralInfoTab entry={entry} setEntry={setEntry} />
-        </div>
+      {loadError && (
+        <Alert variant="destructive">
+          <AlertTitle>Erreur de chargement</AlertTitle>
+          <AlertDescription>
+            {loadError}
+            <div className="mt-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => router.push("/dashboard/rag-database")}
+              >
+                Retourner à la liste
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
       )}
-      
-      {activeTab === "messages" && (
-        <div className="space-y-4">
-          <MessagesTab entry={entry} setEntry={setEntry} />
-        </div>
+
+      {!loadError && (
+        <>
+          {apiError && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertTitle>Erreur de connexion à l'API</AlertTitle>
+              <AlertDescription>
+                <p>{apiError}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2" 
+                  onClick={handleRetry}
+                >
+                  Réessayer
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {saveError && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertTitle>Erreur lors de l'enregistrement</AlertTitle>
+              <AlertDescription>
+                <p>{typeof saveError === 'object' ? JSON.stringify(saveError) : saveError}</p>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="w-full border-b mb-6">
+            <div className="flex">
+              <button 
+                className={`px-4 py-2 font-medium ${activeTab === "general" ? "border-b-2 border-primary" : ""}`}
+                onClick={() => setActiveTab("general")}
+              >
+                Informations générales
+              </button>
+              <button 
+                className={`px-4 py-2 font-medium ${activeTab === "messages" ? "border-b-2 border-primary" : ""}`}
+                onClick={() => setActiveTab("messages")}
+              >
+                Messages
+              </button>
+            </div>
+          </div>
+          
+          {activeTab === "general" && (
+            <div className="space-y-4">
+              <GeneralInfoTab entry={entry} setEntry={setEntry} />
+            </div>
+          )}
+          
+          {activeTab === "messages" && (
+            <div className="space-y-4">
+              <MessagesTab entry={entry} setEntry={setEntry} />
+            </div>
+          )}
+        </>
       )}
 
       <ConfirmationDialog
@@ -231,4 +315,4 @@ export default function EditRagEntryPage({ params }) {
       />
     </div>
   );
-} 
+}

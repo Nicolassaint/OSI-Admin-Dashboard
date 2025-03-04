@@ -5,15 +5,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MagnifyingGlassIcon, PlusIcon, Pencil1Icon, TrashIcon, ArrowLeftIcon } from "@radix-ui/react-icons";
-import ReactMarkdown from 'react-markdown';
-import Link from 'next/link';
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
-
-// Importer le fichier JSON
-import ragDataFile from '@/data/search.json';
-
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import MessagePreview from "@/components/rag-database/message-preview";
 const ITEMS_PER_PAGE = 5; // Nombre d'entrées à afficher par page
 
 export default function RagDatabasePage() {
@@ -26,57 +22,234 @@ export default function RagDatabasePage() {
   const [ragData, setRagData] = useState({
     entries: []
   });
+  const [apiError, setApiError] = useState(null);
 
   // Ajout d'un état pour gérer la confirmation de suppression
   const [deleteConfirmation, setDeleteConfirmation] = useState({ show: false, entryId: null });
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    try {
-      // Convertir les données du fichier JSON en tableau d'entrées
-      const entries = Object.entries(ragDataFile).map(([key, value]) => ({
-        id: key,
-        name: value.name,
-        description: value.description,
-        search: value.search,
-        isDecisionTree: value.details?.Messages && value.details?.Messages.length > 1,
-        details: {
-          label: value.details?.Label,
-          messages: value.details?.Messages?.map(message => ({
-            label: message.Label,
-            description: message.Description,
-            bubbles: message.Bubbles?.map(bubble => ({
-              text: bubble.Text,
-              image: bubble.Image,
-              video: bubble.Video,
-              order: bubble.Order
-            })) || [],
-            buttons: message.Buttons?.map(button => ({
-              label: button.Label,
-              link: button.Link,
-              type: button.Type,
-              order: button.Order
-            })) || []
-          })) || []
-        }
-      }));
-      
-      setRagData({ entries });
-      setLoading(false);
-    } catch (error) {
-      console.error("Erreur lors du chargement des données:", error);
-      setLoading(false);
-    }
+    fetchRagData();
   }, []);
 
+  // Fonction pour récupérer les données depuis l'API backend
+  const fetchRagData = async () => {
+    try {
+      setLoading(true);
+      setApiError(null);
+      
+      const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/rag/data?token=${apiToken}`;
+      
+      // console.log('Fetching data from:', apiUrl); // Debug log
+      
+      const response = await fetch(apiUrl, {
+        signal: AbortSignal.timeout(10000)
+      });
+      
+      // console.log('Response status:', response.status); // Debug log
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText); // Debug log
+        let errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+        
+        if (errorText) {
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.detail || errorMessage;
+          } catch (e) {
+            // Si ce n'est pas du JSON, utiliser le texte brut
+            errorMessage = errorText || errorMessage;
+          }
+        }
+        
+        // Afficher l'erreur dans l'interface utilisateur
+        setApiError(errorMessage);
+        return;
+      }
+      
+      const responseData = await response.json();
+      // console.log('Received data:', responseData); // Debug log
+      
+      // Vérification plus stricte du format des données
+      if (!responseData || typeof responseData !== 'object') {
+        setApiError("Format de données invalide reçu de l'API");
+        return;
+      }
+
+      // Utiliser data si présent, sinon utiliser responseData directement
+      const data = responseData.data || responseData;
+      
+      if (!data || Object.keys(data).length === 0) {
+        setApiError("Aucune donnée n'a été retournée par l'API");
+        return;
+      }
+      
+      // Convertir les données du format backend au format utilisé par le frontend
+      const entries = Object.entries(data).map(([key, value]) => {
+        // Vérifier si la structure contient déjà details ou s'il faut l'adapter
+        const hasStandardFormat = value.details && value.details.Messages;
+        
+        return {
+          id: key,
+          name: value.name,
+          description: value.description,
+          search: value.search,
+          isDecisionTree: hasStandardFormat 
+            ? value.details.Messages && value.details.Messages.length > 1
+            : false,
+          details: hasStandardFormat 
+            ? {
+                label: value.details.Label,
+                messages: value.details.Messages?.map(message => ({
+                  label: message.Label,
+                  description: message.Description,
+                  bubbles: message.Bubbles?.map(bubble => ({
+                    text: bubble.Text,
+                    image: bubble.Image,
+                    video: bubble.Video,
+                    order: bubble.Order
+                  })) || [],
+                  buttons: message.Buttons?.map(button => ({
+                    label: button.Label,
+                    link: button.Link,
+                    type: button.Type,
+                    order: button.Order
+                  })) || []
+                })) || []
+              }
+            : {
+                label: value.name,
+                messages: [{
+                  label: "Message principal",
+                  description: value.description,
+                  bubbles: [{
+                    text: value.description,
+                    image: "",
+                    video: "",
+                    order: 0
+                  }],
+                  buttons: []
+                }]
+              }
+        };
+      });
+      
+      setRagData({ entries });
+    } catch (error) {
+      console.error("Erreur lors du chargement des données:", error);
+      
+      // Déterminer le type d'erreur
+      if (error.name === "AbortError") {
+        setApiError("La requête a expiré. Le serveur API est peut-être indisponible.");
+      } else if (error.message === "API_NOT_FOUND") {
+        setApiError("L'API n'est pas accessible. Vérifiez que le serveur backend est en cours d'exécution.");
+      } else if (error.message.includes("404")) {
+        setApiError("Entrée non trouvée: " + error.message);
+      } else if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+        setApiError("Impossible de se connecter au serveur API. Vérifiez votre connexion réseau.");
+      } else {
+        toast.error(`Erreur: ${error.message}`);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fonction pour réessayer le chargement
+  const handleRetry = () => {
+    fetchRagData();
+  };
+
+  // Fonction pour gérer la suppression
+  const handleDelete = async (entryId) => {
+    try {
+      setIsDeleting(true);
+      
+      const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
+      
+      // Appel à l'API backend pour supprimer l'entrée avec le token
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/data/${encodeURIComponent(entryId)}?token=${apiToken}`, {
+        method: 'DELETE',
+        signal: AbortSignal.timeout(10000) // Timeout après 10 secondes
+      });
+      
+      if (!response.ok) {
+        // Vérifier si c'est une erreur 404 (ressource non trouvée)
+        if (response.status === 404) {
+          const errorText = await response.text().catch(() => "");
+          let errorMessage = `Erreur 404: ${response.statusText}`;
+          
+          if (errorText) {
+            try {
+              const errorJson = JSON.parse(errorText);
+              errorMessage = errorJson.detail || errorMessage;
+            } catch (e) {
+              // Si ce n'est pas du JSON, utiliser le texte brut
+              errorMessage = errorText || errorMessage;
+            }
+          }
+          
+          toast.error(errorMessage);
+          
+          // Si l'entrée n'existe plus, la supprimer de l'interface
+          const updatedEntries = ragData.entries.filter(entry => entry.id !== entryId);
+          setRagData({ entries: updatedEntries });
+          return;
+        }
+        
+        const errorData = await response.json().catch(() => ({ detail: `Erreur ${response.status}: ${response.statusText}` }));
+        toast.error(`Erreur lors de la suppression: ${errorData.detail || "Une erreur est survenue"}`);
+        return;
+      }
+      
+      // Animation de suppression et mise à jour de l'état
+      const updatedEntries = ragData.entries.filter(entry => entry.id !== entryId);
+      setRagData({ entries: updatedEntries });
+      toast.success("Entrée supprimée avec succès");
+      
+      // Synchroniser les données RAG après la suppression
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/sync?token=${apiToken}`, {
+          method: 'POST',
+          signal: AbortSignal.timeout(5000)
+        });
+      } catch (syncError) {
+        console.warn("Avertissement: Impossible de synchroniser les données après la suppression", syncError);
+        // Ne pas bloquer le flux principal si la synchronisation échoue
+      }
+    } catch (error) {
+      console.error("Erreur lors de la suppression:", error);
+      
+      if (error.name === "AbortError") {
+        toast.error("La requête de suppression a expiré. Le serveur API est peut-être indisponible.");
+      } else if (error.message === "API_NOT_FOUND") {
+        toast.error("L'API n'est pas accessible. Vérifiez que le serveur backend est en cours d'exécution.");
+      } else if (error.message.includes("404")) {
+        toast.error("Entrée non trouvée: " + error.message);
+      } else if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+        toast.error("Impossible de se connecter au serveur API pour la suppression.");
+      } else {
+        toast.error(`Erreur lors de la suppression: ${error.message}`);
+      }
+    } finally {
+      // Fermer la boîte de dialogue
+      setDeleteConfirmation({ show: false, entryId: null });
+      setIsDeleting(false);
+    }
+  };
+
   // Calculer les entrées filtrées et la pagination
+  const searchTermLower = searchTerm?.toLowerCase() || "";
+
   const filteredEntries = ragData.entries.filter(entry => 
-    entry.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.search?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.details?.label?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.details?.messages?.some(message => 
-        message.label?.toLowerCase().includes(searchTerm.toLowerCase())
+    (typeof entry?.name === 'string' ? entry.name.toLowerCase().includes(searchTermLower) : false) ||
+    (typeof entry?.description === 'string' ? entry.description.toLowerCase().includes(searchTermLower) : false) ||
+    (typeof entry?.search === 'string' ? entry.search.toLowerCase().includes(searchTermLower) : false) ||
+    (typeof entry?.details?.label === 'string' ? entry.details.label.toLowerCase().includes(searchTermLower) : false) ||
+    entry?.details?.messages?.some(message => 
+      typeof message?.label === 'string' ? message.label.toLowerCase().includes(searchTermLower) : false
     )
   );
   
@@ -86,69 +259,61 @@ export default function RagDatabasePage() {
     currentPage * ITEMS_PER_PAGE
   );
 
-  // Fonction pour gérer la suppression
-  const handleDelete = async (entryId) => {
-    try {
-      setIsDeleting(true);
-      // Appel API pour supprimer l'entrée
-      const response = await fetch(`/api/rag-database/${entryId}`, {
-        method: 'DELETE',
-      });
-      
-      if (response.ok) {
-        // Animation de suppression et mise à jour de l'état
-        const updatedEntries = ragData.entries.filter(entry => entry.id !== entryId);
-        setRagData({ entries: updatedEntries });
-        toast.success("Entrée supprimée avec succès");
-      } else {
-        toast.error("Erreur lors de la suppression");
-      }
-    } catch (error) {
-      console.error("Erreur lors de la suppression:", error);
-      toast.error("Erreur lors de la suppression");
-    } finally {
-      // Fermer la boîte de dialogue
-      setDeleteConfirmation({ show: false, entryId: null });
-      setIsDeleting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Chargement des données...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Base de données RAG
-        </h1>
-        <Link href="/dashboard/rag-database/edit/new">
-          <Button>
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Nouvelle entrée
-          </Button>
-        </Link>
+        <h1 className="text-3xl font-bold">Base de données RAG</h1>
+        <Button onClick={() => router.push("/dashboard/rag-database/edit/new")}>
+          <PlusIcon className="h-4 w-4 mr-2" />
+          Nouvelle entrée
+        </Button>
       </div>
+
+      {apiError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTitle>Erreur de connexion à l'API</AlertTitle>
+          <AlertDescription>
+            <p>{apiError}</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-2" 
+              onClick={handleRetry}
+            >
+              Réessayer
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
           <CardTitle>Rechercher</CardTitle>
+          <CardDescription>
+            Recherchez dans la base de données RAG par nom, description ou contenu.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Rechercher par nom, description ou termes..."
-              className="pl-10"
+              placeholder="Rechercher..."
+              className="pl-9"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
-                setCurrentPage(1); // Réinitialiser à la première page lors d'une nouvelle recherche
+                setCurrentPage(1); // Réinitialiser la pagination lors d'une nouvelle recherche
               }}
             />
           </div>
@@ -175,29 +340,27 @@ export default function RagDatabasePage() {
                     <div className="flex justify-between items-start">
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">{entry.name}</p>
-                          {entry.isDecisionTree && (
-                            <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
+                          <h3 className="font-medium">{entry.name}</h3>
+                          {entry.details?.messages && entry.details.messages.length > 1 && (
+                            <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                               Arbre de décision
                             </span>
                           )}
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          <ReactMarkdown>{entry.description}</ReactMarkdown>
-                        </div>
+                        <p className="text-sm text-muted-foreground">{entry.description}</p>
                       </div>
-                      <div className="flex space-x-2 mt-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          asChild 
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            router.push(`/dashboard/rag-database/edit/${encodeURIComponent(entry.id)}`);
+                          }}
                         >
-                          <Link href={`/dashboard/rag-database/edit/${encodeURIComponent(entry.id)}`}>
-                            <Pencil1Icon className="h-4 w-4" />
-                          </Link>
+                          <Pencil1Icon className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="destructive" 
+                        <Button
+                          variant="outline"
                           size="sm" 
                           onClick={() => setDeleteConfirmation({ show: true, entryId: entry.id })}
                         >
@@ -209,38 +372,7 @@ export default function RagDatabasePage() {
                     {/* Afficher uniquement le premier message dans la vue de recherche */}
                     {entry.details?.messages && entry.details.messages.length > 0 && (
                       <div className="mt-4">
-                        <p className="font-medium text-sm">
-                          Message: {entry.details.messages[0].label}
-                          {entry.isDecisionTree && (
-                            <span className="ml-2 text-xs text-muted-foreground">
-                              (+{entry.details.messages.length - 1} messages supplémentaires)
-                            </span>
-                          )}
-                        </p>
-                        
-                        {entry.details.messages[0].bubbles?.map((bubble, bidx) => (
-                          <div key={bidx} className="ml-4 mt-2">
-                            <div className="text-sm prose prose-sm max-w-none dark:prose-invert">
-                              <ReactMarkdown>{bubble.text}</ReactMarkdown>
-                            </div>
-                            {bubble.image && <img src={bubble.image} alt="Bubble image" className="mt-2 max-w-md rounded-md" />}
-                            {bubble.video && <video src={bubble.video} className="mt-2 max-w-md rounded-md" controls />}
-                          </div>
-                        ))}
-
-                        {/* Affichage des boutons */}
-                        {entry.details.messages[0].buttons?.length > 0 && (
-                          <div className="ml-4 mt-3">
-                            <p className="text-xs text-muted-foreground mb-1">Boutons:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {entry.details.messages[0].buttons.map((button, idx) => (
-                                <div key={idx} className="inline-block px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs border border-gray-200 dark:border-gray-700">
-                                  {button.label}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        <MessagePreview message={entry.details.messages[0]} />
                       </div>
                     )}
                   </div>
@@ -290,4 +422,4 @@ export default function RagDatabasePage() {
       />
     </div>
   );
-} 
+}
