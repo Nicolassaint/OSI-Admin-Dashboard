@@ -15,10 +15,12 @@ import {
   FileTextIcon,
   SunIcon,
   MoonIcon,
+  Cross2Icon,
 } from "@radix-ui/react-icons";
 import { signOut } from "next-auth/react";
 import { Suspense } from "react";
 import { useTheme } from "next-themes";
+import { useState, useEffect } from "react";
 
 // Ajout du composant de chargement avec logo rotatif
 function LoadingSpinner() {
@@ -42,6 +44,13 @@ export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const { theme, setTheme } = useTheme();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    // Synchroniser le thème avec la classe du document
+    const isDark = theme === "dark";
+    document.documentElement.classList.toggle("dark", isDark);
+  }, [theme]);
 
   if (status === "loading") {
     return <LoadingSpinner />;
@@ -121,15 +130,28 @@ export default function DashboardLayout({ children }) {
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center md:hidden">
-                <Button variant="ghost" size="sm">
-                  <DashboardIcon className="h-5 w-5" />
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                >
+                  {isMobileMenuOpen ? (
+                    <Cross2Icon className="h-5 w-5" />
+                  ) : (
+                    <DashboardIcon className="h-5 w-5" />
+                  )}
                 </Button>
               </div>
               <div className="flex items-center">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  onClick={() => {
+                    const newTheme = theme === "dark" ? "light" : "dark";
+                    setTheme(newTheme);
+                    // Force la mise à jour immédiate du DOM
+                    document.documentElement.classList.toggle("dark", newTheme === "dark");
+                  }}
                   className="mr-4 flex items-center gap-2"
                 >
                   {theme === "dark" ? (
@@ -166,6 +188,71 @@ export default function DashboardLayout({ children }) {
           </Suspense>
         </main>
       </div>
+
+      {/* Mobile menu */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm md:hidden">
+          <div className="fixed inset-y-0 left-0 w-3/4 bg-card border-r border-border p-6">
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <Image 
+                    src="/OSI_logo.png" 
+                    alt="OSI Admin Logo" 
+                    width={40} 
+                    height={40}
+                    priority
+                    className="rounded-full"
+                  />
+                  <h2 className="text-lg font-semibold">OSI Admin</h2>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <Cross2Icon className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <nav className="flex-1">
+                <ul className="space-y-2">
+                  {navigation.map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                      <li key={item.name}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
+                            isActive
+                              ? "bg-primary text-primary-foreground"
+                              : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                          }`}
+                        >
+                          <item.icon className="mr-3 h-5 w-5" />
+                          {item.name}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </nav>
+
+              <div className="mt-6">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                >
+                  <ExitIcon className="mr-2 h-4 w-4" />
+                  Déconnexion
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-} 
+}
