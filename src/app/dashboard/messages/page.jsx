@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import React from "react";
-import { MessageList, MessageFilter, MessageSearch, MessageSort } from "@/components/messages";
+import { MessageList, MessageFilter, MessageSearch, MessageSort, MessageEvaluationFilter } from "@/components/messages";
 
 export default function MessagesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -13,6 +13,7 @@ export default function MessagesPage() {
   const [error, setError] = useState(null);
   const [sortOrder, setSortOrder] = useState("desc");
   const [wsConnected, setWsConnected] = useState(false);
+  const [evaluationFilter, setEvaluationFilter] = useState("all");
 
   // Récupérer les conversations depuis l'API
   useEffect(() => {
@@ -54,8 +55,8 @@ export default function MessagesPage() {
             message: conv.user_message,
             response: conv.response || "",
             timestamp: conv.timestamp,
-            status: conv.evaluation ? "resolved" : "pending",
-            evaluation: conv.evaluation,
+            status: conv.status || "pending",
+            evaluation: conv.evaluation?.rating === 1 ? 1 : conv.evaluation?.rating === 0 ? 0 : null,
             video: conv.video,
             image: conv.image,
             buttons: conv.buttons || []
@@ -147,8 +148,8 @@ export default function MessagesPage() {
                 message: data.user_message || "",
                 response: data.response || "",
                 timestamp: data.timestamp || new Date().toISOString(),
-                status: data.evaluation ? "resolved" : "pending",
-                evaluation: data.evaluation,
+                status: data.status || "pending",
+                evaluation: data.evaluation?.rating === 1 ? 1 : data.evaluation?.rating === 0 ? 0 : null,
                 video: data.video,
                 image: data.image,
                 buttons: data.buttons || []
@@ -226,6 +227,21 @@ export default function MessagesPage() {
       result = result.filter((message) => message.status === filter);
     }
     
+    // Filtrage par évaluation
+    if (evaluationFilter !== "all") {
+      switch (evaluationFilter) {
+        case "positive":
+          result = result.filter(message => message.evaluation === 1);
+          break;
+        case "negative":
+          result = result.filter(message => message.evaluation === 0);
+          break;
+        case "no-feedback":
+          result = result.filter(message => message.evaluation === null);
+          break;
+      }
+    }
+    
     // Filtrage par recherche
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -238,14 +254,14 @@ export default function MessagesPage() {
     }
     
     // Tri par date
-    result.sort((a, b) => {
-      const dateA = new Date(a.timestamp);
-      const dateB = new Date(b.timestamp);
-      return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+    return result.sort((a, b) => {
+      if (sortOrder === "desc") {
+        return new Date(b.timestamp) - new Date(a.timestamp);
+      } else {
+        return new Date(a.timestamp) - new Date(b.timestamp);
+      }
     });
-    
-    return result;
-  }, [messages, filter, searchTerm, sortOrder]);
+  }, [messages, filter, searchTerm, sortOrder, evaluationFilter]);
 
   // Marquer un message comme résolu
   const markAsResolved = (id) => {
@@ -254,23 +270,11 @@ export default function MessagesPage() {
         message.id === id ? { ...message, status: "resolved" } : message
       )
     );
-    
-    // Ici, vous pourriez également envoyer une requête à votre API
-    // pour mettre à jour le statut dans la base de données
   };
 
   // Supprimer un message (pourrait être adapté pour appeler votre API)
   const deleteMessage = (id) => {
     setMessages(messages.filter((message) => message.id !== id));
-  };
-
-  // Archiver un message
-  const archiveMessage = (id) => {
-    setMessages(
-      messages.map((message) =>
-        message.id === id ? { ...message, status: "archived" } : message
-      )
-    );
   };
 
   return (
@@ -280,6 +284,7 @@ export default function MessagesPage() {
         <div className="flex space-x-2">
           <MessageSearch searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
           <MessageFilter filter={filter} setFilter={setFilter} />
+          <MessageEvaluationFilter evaluationFilter={evaluationFilter} setEvaluationFilter={setEvaluationFilter} />
           <MessageSort sortOrder={sortOrder} setSortOrder={setSortOrder} />
         </div>
       </div>
@@ -310,7 +315,6 @@ export default function MessagesPage() {
             error={error}
             onMarkAsResolved={markAsResolved}
             onDelete={deleteMessage}
-            onArchive={archiveMessage}
           />
         </CardContent>
       </Card>

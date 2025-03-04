@@ -8,7 +8,6 @@ export default function MessageFilter({ filter, setFilter }) {
       <option value="all">Tous</option>
       <option value="resolved">Résolus</option>
       <option value="pending">En attente</option>
-      <option value="archived">Archivés</option>
     </select>
   );
 } 

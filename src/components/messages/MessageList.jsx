@@ -8,7 +8,6 @@ export default function MessageList({
   error, 
   onMarkAsResolved, 
   onDelete, 
-  onArchive 
 }) {
   const ITEMS_PER_PAGE = 5; // Nombre de messages par page
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,7 +90,6 @@ export default function MessageList({
             message={message}
             onMarkAsResolved={onMarkAsResolved}
             onDelete={onDelete}
-            onArchive={onArchive}
             formatDate={formatDate}
           />
         ))}

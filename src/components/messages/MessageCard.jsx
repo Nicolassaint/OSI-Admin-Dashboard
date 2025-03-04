@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { TrashIcon, ArchiveIcon } from "@radix-ui/react-icons";
+import { TrashIcon } from "@radix-ui/react-icons";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 
 export default function MessageCard({ 
   message, 
   onMarkAsResolved, 
   onDelete, 
-  onArchive,
   formatDate 
 }) {
   // État pour gérer l'ouverture de la boîte de dialogue de confirmation
@@ -56,13 +55,6 @@ export default function MessageCard({
           </p>
         </div>
         <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onArchive(message.id)}
-          >
-            <ArchiveIcon className="h-4 w-4" />
-          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -126,21 +118,32 @@ export default function MessageCard({
       )}
       
       <div className="flex justify-between items-center">
-        <span
-          className={`text-xs px-2 py-1 rounded-full ${
-            message.status === "resolved"
-              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-              : message.status === "pending"
-              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
-              : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
-          }`}
-        >
-          {message.status === "resolved"
-            ? "Résolu"
-            : message.status === "pending"
-            ? "En attente"
-            : "Archivé"}
-        </span>
+        <div className="flex gap-2">
+          <span
+            className={`text-xs px-2 py-1 rounded-full ${
+              message.status === "resolved"
+                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
+            }`}
+          >
+            {message.status === "resolved" ? "Résolu" : "En attente"}
+          </span>
+          <span
+            className={`text-xs px-2 py-1 rounded-full ${
+              message.evaluation === 1
+                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                : message.evaluation === 0
+                ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
+                : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+            }`}
+          >
+            {message.evaluation === 1
+              ? "Avis positif"
+              : message.evaluation === 0
+              ? "Avis négatif"
+              : "Pas d'avis"}
+          </span>
+        </div>
         {message.status !== "resolved" && (
           <Button size="sm" onClick={() => onMarkAsResolved(message.id)}>
             Marquer comme résolu
