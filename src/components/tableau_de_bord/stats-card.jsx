@@ -6,16 +6,20 @@ export function StatCard({ name, value, icon: Icon }) {
   const [prevValue, setPrevValue] = useState(value);
   
   useEffect(() => {
-    // Mettre à jour la valeur précédente après l'animation
     const timer = setTimeout(() => {
       setPrevValue(value);
-    }, 600); // Durée légèrement plus longue que l'animation
+    }, 600);
     
     return () => clearTimeout(timer);
   }, [value]);
-  
-  // Déterminer si la valeur a changé
-  const hasChanged = prevValue !== value;
+
+  // Fonction pour séparer la valeur en caractères individuels
+  const splitValue = (val) => {
+    return val.toString().split('');
+  };
+
+  const prevChars = splitValue(prevValue);
+  const currentChars = splitValue(value);
 
   return (
     <Card>
@@ -24,18 +28,26 @@ export function StatCard({ name, value, icon: Icon }) {
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={value} // Changer la clé force une réanimation
-            initial={hasChanged ? { opacity: 0, y: -10 } : false}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10, position: 'absolute' }}
-            transition={{ duration: 0.5 }}
-            className="text-2xl font-bold"
-          >
-            {value}
-          </motion.div>
-        </AnimatePresence>
+        <div className="text-2xl font-bold flex">
+          {currentChars.map((char, index) => {
+            const prevChar = prevChars[index];
+            const hasChanged = prevChar !== char;
+
+            return (
+              <AnimatePresence mode="wait" key={`${index}-${char}`}>
+                <motion.span
+                  key={`${index}-${char}`}
+                  initial={hasChanged ? { opacity: 0, y: -20 } : false}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  {char}
+                </motion.span>
+              </AnimatePresence>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );

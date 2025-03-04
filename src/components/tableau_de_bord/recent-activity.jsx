@@ -47,7 +47,60 @@ export function RecentActivity() {
       }
     };
 
+    // Connexion WebSocket pour les mises à jour en temps réel
+    let ws = null;
+    
+    const connectWebSocket = () => {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+        const wsUrl = apiUrl.replace('http', 'ws');
+        const wsToken = process.env.NEXT_PUBLIC_WEBSOCKET_TOKEN;
+        
+        ws = new WebSocket(`${wsUrl}/ws?token=${wsToken}`);
+        
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            
+            if (message.type === 'new_conversation' && message.data) {
+              setRecentMessages(prevMessages => {
+                // Vérifier si le message existe déjà
+                const messageId = message.data.id || message.data._id;
+                const messageExists = prevMessages.some(
+                  msg => (msg.id || msg._id) === messageId
+                );
+                
+                // Si le message existe déjà, ne pas le rajouter
+                if (messageExists) {
+                  return prevMessages;
+                }
+                
+                // Sinon, ajouter le nouveau message
+                const newMessages = [message.data, ...prevMessages].slice(0, 3);
+                return newMessages;
+              });
+            }
+          } catch (err) {
+            console.error("Erreur lors du traitement du message WebSocket:", err);
+          }
+        };
+        
+        ws.onerror = (error) => {
+          console.error('Erreur WebSocket pour les conversations:', error);
+        };
+      } catch (error) {
+        console.error("Erreur lors de la création du WebSocket pour les conversations:", error);
+      }
+    };
+
     fetchRecentMessages();
+    connectWebSocket();
+
+    return () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
   }, []);
 
   const formatTimeAgo = (timestamp) => {
@@ -91,4 +144,4 @@ export function RecentActivity() {
       </CardContent>
     </Card>
   );
-} 
+}
