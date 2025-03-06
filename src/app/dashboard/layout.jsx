@@ -74,15 +74,17 @@ export default function DashboardLayout({ children }) {
       <div className="hidden md:flex md:flex-col md:w-64 bg-card border-r border-border">
         {/* Logo et titre */}
         <div className="flex flex-col items-center pt-8 pb-6">
-          <div className="mb-4">
-            <Image 
-              src="/OSI_logo.png" 
-              alt="OSI Admin Logo" 
-              width={80} 
-              height={80}
-              priority
-              className="rounded-full"
-            />
+          <div className="mb-4 cursor-pointer">
+            <Link href="/dashboard">
+              <Image 
+                src="/OSI_logo.png" 
+                alt="OSI Admin Logo" 
+                width={80} 
+                height={80}
+                priority
+                className="rounded-full"
+              />
+            </Link>
           </div>
           <h1 className="text-xl font-semibold text-foreground">OSI Admin</h1>
         </div>
@@ -196,14 +198,16 @@ export default function DashboardLayout({ children }) {
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
-                  <Image 
-                    src="/OSI_logo.png" 
-                    alt="OSI Admin Logo" 
-                    width={40} 
-                    height={40}
-                    priority
-                    className="rounded-full"
-                  />
+                  <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Image 
+                      src="/OSI_logo.png" 
+                      alt="OSI Admin Logo" 
+                      width={40} 
+                      height={40}
+                      priority
+                      className="rounded-full"
+                    />
+                  </Link>
                   <h2 className="text-lg font-semibold">OSI Admin</h2>
                 </div>
                 <Button

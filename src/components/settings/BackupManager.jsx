@@ -303,16 +303,26 @@ export default function BackupManager() {
             onClick={initiateCreateBackup} 
             className="flex items-center"
           >
-            <ArchiveIcon className="mr-2 h-4 w-4" />
-            Créer une sauvegarde
+            <ArchiveIcon className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Créer une sauvegarde</span>
+            <span className="sm:hidden">Créer</span>
           </Button>
           
           <div className="flex items-center gap-2">
-            <MessageSearch 
-              searchTerm={searchTerm} 
-              setSearchTerm={setSearchTerm}
-              placeholder="Rechercher par date (JJ/MM/AAAA) ou heure (HH:mm)..."
-            />
+            <div className="w-full max-w-[300px] lg:max-w-[400px] hidden sm:block">
+              <MessageSearch 
+                searchTerm={searchTerm} 
+                setSearchTerm={setSearchTerm}
+                placeholder="Rechercher par date (JJ/MM/AAAA) ou heure (HH:mm)..."
+              />
+            </div>
+            <div className="sm:hidden w-full max-w-[150px]">
+              <MessageSearch 
+                searchTerm={searchTerm} 
+                setSearchTerm={setSearchTerm}
+                placeholder="Rechercher..."
+              />
+            </div>
             <Button 
               variant="outline" 
               onClick={fetchBackups} 
@@ -364,7 +374,6 @@ export default function BackupManager() {
             <Table>
               <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
-                  <TableHead>Nom</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -374,7 +383,6 @@ export default function BackupManager() {
                   Array(visibleItems || 5).fill(0).map((_, index) => (
                     <TableRow key={index} className="h-[53px]">
                       <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Skeleton className="h-8 w-20" />
@@ -406,31 +414,28 @@ export default function BackupManager() {
                 ) : (
                   paginatedBackups.map((backup) => (
                     <TableRow key={backup.name} className="group h-[53px]">
-                      <TableCell className="font-medium max-w-[200px] truncate" title={backup.name}>
-                        {backup.name}
-                      </TableCell>
-                      <TableCell className="flex items-center">
-                        <ClockIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                      <TableCell className="flex items-center whitespace-nowrap min-w-[120px]">
+                        <ClockIcon className="mr-1 sm:mr-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
                         {formatDate(backup.date)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right pl-1 sm:pl-4">
                         <div className="flex justify-end gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
                           <Button 
                             variant="ghost" 
-                            size="sm"
                             onClick={() => initiateRestore(backup)}
-                            className="flex items-center"
+                            className="h-8 sm:h-9"
+                            size="sm"
                           >
-                            <UpdateIcon className="mr-1.5 h-3.5 w-3.5" />
+                            <UpdateIcon className="h-3.5 w-3.5 mr-2" />
                             Restaurer
                           </Button>
                           <Button 
                             variant="ghost" 
-                            size="sm"
                             onClick={() => initiateDelete(backup)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 flex items-center"
+                            className="h-8 sm:h-9 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            size="sm"
                           >
-                            <TrashIcon className="mr-1.5 h-3.5 w-3.5" />
+                            <TrashIcon className="h-3.5 w-3.5 mr-2" />
                             Supprimer
                           </Button>
                         </div>

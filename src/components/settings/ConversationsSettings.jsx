@@ -293,23 +293,33 @@ export default function ConversationsSettings() {
           <h3 className="text-lg font-medium">Exportation et suppression</h3>
           <div className="grid gap-4 md:grid-cols-2">
             <Button 
-              variant="outline" 
+              variant="outline"
               onClick={handleExportConversations}
               disabled={isExporting}
               className="flex items-center justify-center"
             >
-              <Download className="mr-2 h-4 w-4" />
-              {isExporting ? "Exportation..." : "Exporter les conversations"}
+              <Download className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">
+                {isExporting ? "Exportation..." : "Exporter les conversations"}
+              </span>
+              <span className="sm:hidden">
+                {isExporting ? "..." : "Exporter"}
+              </span>
             </Button>
             
             <Button 
-              variant="outline" 
+              variant="outline"
               onClick={initiateDelete}
               disabled={isDeleting}
               className="flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
-              {isDeleting ? "Suppression..." : "Supprimer toutes les conversations"}
+              <Trash2 className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">
+                {isDeleting ? "Suppression..." : "Supprimer les conversations"}
+              </span>
+              <span className="sm:hidden">
+                {isDeleting ? "..." : "Supprimer"}
+              </span>
             </Button>
           </div>
           

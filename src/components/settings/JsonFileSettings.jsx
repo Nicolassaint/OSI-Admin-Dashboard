@@ -220,8 +220,13 @@ export default function JsonFileSettings() {
               disabled={isExporting}
               className="flex items-center justify-center"
             >
-              <Download className="mr-2 h-4 w-4" />
-              {isExporting ? "Exportation..." : "Exporter les données"}
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">
+                {isExporting ? "Exportation..." : "Exporter les données"}
+              </span>
+              <span className="sm:hidden">
+                {isExporting ? "..." : "Export"}
+              </span>
             </Button>
             
             <Button 
@@ -230,8 +235,13 @@ export default function JsonFileSettings() {
               disabled={isDeleting}
               className="flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
-              {isDeleting ? "Suppression..." : "Supprimer les données"}
+              <Trash2 className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">
+                {isDeleting ? "Suppression..." : "Supprimer les données"}
+              </span>
+              <span className="sm:hidden">
+                {isDeleting ? "..." : "Suppr."}
+              </span>
             </Button>
           </div>
           
