@@ -102,18 +102,20 @@ export default function StatisticsPage() {
             onDateRangeChange={handleDateRangeChange} 
             className="w-full md:w-auto"
           />
-          <select
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value)}
-            className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary w-full md:w-auto"
-          >
-            <option value="hourly">Par heure</option>
-            <option value="daily">Par jour</option>
-            <option value="weekly">Par semaine</option>
-            <option value="monthly">Par mois</option>
-            <option value="yearly">Par année</option>
-            <option value="all_time">Tout le temps</option>
-          </select>
+          {activeTab !== "rag" && (
+            <select
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value)}
+              className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary w-full md:w-auto"
+            >
+              <option value="hourly">Par heure</option>
+              <option value="daily">Par jour</option>
+              <option value="weekly">Par semaine</option>
+              <option value="monthly">Par mois</option>
+              <option value="yearly">Par année</option>
+              <option value="all_time">Tout le temps</option>
+            </select>
+          )}
         </div>
       </div>
 
