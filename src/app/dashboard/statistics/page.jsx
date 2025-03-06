@@ -12,6 +12,7 @@ import RAGMetricsCards from "@/components/statistics/RAGMetricsCards";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import TopChunksChart from "@/components/statistics/TopChunksChart";
+import { Button } from "@/components/ui/button";
 
 export default function StatisticsPage() {
   const [timeRange, setTimeRange] = useState("daily");
@@ -46,7 +47,9 @@ export default function StatisticsPage() {
           metrics = await getMetrics(startDate, endDate);
         } catch (metricsError) {
           console.error("Erreur lors du chargement des métriques générales:", metricsError);
-          // Continuer avec les autres appels même si celui-ci échoue
+          // Capturer le message d'erreur spécifique
+          const errorMessage = metricsError.message || "Erreur inconnue";
+          setError(`Impossible de charger les métriques générales: ${errorMessage}`);
         }
         
         try {
@@ -65,20 +68,25 @@ export default function StatisticsPage() {
           }
         } catch (timeseriesError) {
           console.error("Erreur lors du chargement des métriques temporelles:", timeseriesError);
-          // Continuer même si cet appel échoue
+          // Capturer le message d'erreur spécifique si pas déjà défini
+          if (!error) {
+            const errorMessage = timeseriesError.message || "Erreur inconnue";
+            setError(`Impossible de charger les métriques temporelles: ${errorMessage}`);
+          }
         }
         
         // Mettre à jour l'état avec les données disponibles
         if (metrics) setMetricsData(metrics);
         if (timeseries) setTimeseriesData(timeseries);
         
-        // Afficher une erreur seulement si les deux appels ont échoué
-        if (!metrics && !timeseries) {
-          setError("Impossible de charger les données statistiques. Veuillez vérifier votre connexion ou réessayer plus tard.");
+        // Afficher une erreur générale seulement si les deux appels ont échoué et qu'aucun message spécifique n'a été défini
+        if (!metrics && !timeseries && !error) {
+          setError("Impossible de charger les données statistiques. Le serveur API est peut-être indisponible.");
         }
       } catch (error) {
         console.error("Erreur globale lors du chargement des métriques:", error);
-        setError("Impossible de charger les données statistiques. Veuillez vérifier votre connexion ou réessayer plus tard.");
+        const errorMessage = error.message || "Erreur inconnue";
+        setError(`Impossible de charger les données statistiques: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
@@ -120,10 +128,19 @@ export default function StatisticsPage() {
       </div>
 
       {error && (
-        <Alert variant="destructive" className="mb-4">
-          <ExclamationTriangleIcon className="h-4 w-4" />
-          <AlertTitle>Erreur</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+        <Alert variant="destructive" className="mb-6">
+          <AlertTitle>Erreur de connexion à l'API</AlertTitle>
+          <AlertDescription>
+            <p>{error}</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-2" 
+              onClick={() => window.location.reload()}
+            >
+              Réessayer
+            </Button>
+          </AlertDescription>
         </Alert>
       )}
 
@@ -141,29 +158,49 @@ export default function StatisticsPage() {
           <>
             <TabsContent value="overview">
               <div className="space-y-6">
-                <GeneralMetricsCards 
-                  metrics={metricsData?.general} 
-                  timeseriesData={timeseriesData}
-                  dateRange={dateRange}
-                  timeRange={timeRange}
-                />
-                
-                <div className="grid gap-4 md:grid-cols-2">
-                  <ConversationsChart data={timeseriesData?.data} period={timeRange} />
-                  <SatisfactionChart data={timeseriesData?.data} period={timeRange} />
-                </div>
+                {!error && (
+                  <>
+                    <GeneralMetricsCards 
+                      metrics={metricsData?.general} 
+                      timeseriesData={timeseriesData}
+                      dateRange={dateRange}
+                      timeRange={timeRange}
+                    />
+                    
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <ConversationsChart data={timeseriesData?.data} period={timeRange} />
+                      <SatisfactionChart data={timeseriesData?.data} period={timeRange} />
+                    </div>
+                  </>
+                )}
+                {error && !metricsData && !timeseriesData && (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <p>Les données ne sont pas disponibles actuellement.</p>
+                    <p>Veuillez réessayer plus tard ou contacter l'administrateur.</p>
+                  </div>
+                )}
               </div>
             </TabsContent>
 
             <TabsContent value="rag">
               <div className="space-y-6">
-                <RAGMetricsCards 
-                  metrics={metricsData?.rag} 
-                  itemsCount={metricsData?.rag_items_count}
-                  timeseriesData={timeseriesData}
-                />
-                
-                <TopChunksChart data={timeseriesData?.top_chunks} />
+                {!error && (
+                  <>
+                    <RAGMetricsCards 
+                      metrics={metricsData?.rag} 
+                      itemsCount={metricsData?.rag_items_count}
+                      timeseriesData={timeseriesData}
+                    />
+                    
+                    <TopChunksChart data={timeseriesData?.top_chunks} />
+                  </>
+                )}
+                {error && !metricsData && !timeseriesData && (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <p>Les données RAG ne sont pas disponibles actuellement.</p>
+                    <p>Veuillez réessayer plus tard ou contacter l'administrateur.</p>
+                  </div>
+                )}
               </div>
             </TabsContent>
           </>

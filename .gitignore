@@ -19,6 +19,8 @@
 
 # production
 /build
+/logs
+app.pid 
 
 # misc
 .DS_Store
