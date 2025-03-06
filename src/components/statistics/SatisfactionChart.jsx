@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useTheme } from "next-themes";
@@ -76,7 +76,7 @@ const SatisfactionChart = ({ data, period = "daily" }) => {
       <CardContent>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
+            <LineChart
               data={chartData}
               margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
             >
@@ -91,7 +91,6 @@ const SatisfactionChart = ({ data, period = "daily" }) => {
                 labelFormatter={value => formatDate(value)}
                 formatter={(value, name) => {
                   if (name === 'satisfactionRate') {
-                    // Ne plus formater la valeur, simplement ajouter le symbole %
                     return [`${value}%`, 'Satisfaction'];
                   }
                   if (name === 'evaluations') return [value, 'Évaluations'];
@@ -119,22 +118,30 @@ const SatisfactionChart = ({ data, period = "daily" }) => {
                   marginBottom: '5px',
                   fontSize: '15px'
                 }}
-                cursor={false}
+                cursor={{ stroke: isDarkMode ? '#666' : '#ccc', strokeWidth: 1 }}
                 isAnimationActive={false}
               />
-              <Bar 
+              <Line 
                 yAxisId="left"
+                type="monotone"
                 dataKey="satisfactionRate" 
-                fill="#8884d8" 
+                stroke="#8884d8" 
                 name="Satisfaction"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6, stroke: '#8884d8', strokeWidth: 2 }}
               />
-              <Bar 
+              <Line 
                 yAxisId="right"
+                type="monotone"
                 dataKey="evaluations" 
-                fill="#82ca9d" 
+                stroke="#82ca9d" 
                 name="Évaluations"
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6, stroke: '#82ca9d', strokeWidth: 2 }}
               />
-            </BarChart>
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </CardContent>
