@@ -1,0 +1,145 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { format, parseISO } from "date-fns";
+import { fr } from "date-fns/locale";
+import { useTheme } from "next-themes";
+
+const SatisfactionChart = ({ data, period = "daily" }) => {
+  // Utiliser le hook useTheme pour obtenir le thème actuel
+  const { theme } = useTheme();
+  const isDarkMode = theme === "dark";
+
+  // Filtrer les données pour n'inclure que celles avec un taux de satisfaction
+  const chartData = data?.filter(item => item.satisfaction_rate !== null && item.satisfaction_rate !== undefined)
+    .map(item => ({
+      date: item.date,
+      satisfactionRate: item.satisfaction_rate || 0,
+      evaluations: item.evaluations || 0
+    })) || [];
+
+  // Si aucune donnée, afficher un message
+  if (!chartData || chartData.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{getChartTitle()}</CardTitle>
+          <CardDescription>Taux de satisfaction et nombre d'évaluations</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80 flex items-center justify-center">
+            <p className="text-muted-foreground">Aucune donnée de satisfaction disponible pour cette période</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Formater la date pour l'affichage en fonction de la période
+  const formatDate = (dateStr) => {
+    try {
+      if (period === "hourly") {
+        return format(parseISO(dateStr), 'HH:00', { locale: fr });
+      } else if (period === "daily") {
+        return format(parseISO(dateStr), 'dd MMM', { locale: fr });
+      } else if (period === "weekly") {
+        return format(parseISO(dateStr), 'dd MMM', { locale: fr });
+      } else if (period === "monthly") {
+        return format(parseISO(dateStr), 'MMM yyyy', { locale: fr });
+      } else if (period === "yearly" || period === "all_time") {
+        return dateStr; // Année au format YYYY
+      }
+      return dateStr;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  // Déterminer le titre en fonction de la période
+  const getChartTitle = () => {
+    switch(period) {
+      case "hourly": return "Satisfaction par heure";
+      case "daily": return "Satisfaction quotidienne";
+      case "weekly": return "Satisfaction hebdomadaire";
+      case "monthly": return "Satisfaction mensuelle";
+      case "yearly": return "Satisfaction annuelle";
+      case "all_time": return "Satisfaction (toutes périodes)";
+      default: return "Satisfaction utilisateur";
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{getChartTitle()}</CardTitle>
+        <CardDescription>Taux de satisfaction et nombre d'évaluations</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartData}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="date" 
+                tickFormatter={formatDate}
+              />
+              <YAxis yAxisId="left" domain={[0, 100]} />
+              <YAxis yAxisId="right" orientation="right" />
+              <Tooltip 
+                labelFormatter={value => formatDate(value)}
+                formatter={(value, name) => {
+                  if (name === 'satisfactionRate') {
+                    // Ne plus formater la valeur, simplement ajouter le symbole %
+                    return [`${value}%`, 'Satisfaction'];
+                  }
+                  if (name === 'evaluations') return [value, 'Évaluations'];
+                  return [value, name];
+                }}
+                contentStyle={{
+                  backgroundColor: isDarkMode ? '#2a2a3c' : 'white',
+                  color: isDarkMode ? 'white' : '#334155',
+                  border: `2px solid ${isDarkMode ? '#3b82f6' : '#0070f3'}`,
+                  borderRadius: '8px',
+                  padding: '10px',
+                  fontSize: '14px',
+                  boxShadow: isDarkMode 
+                    ? '0 0 10px rgba(0, 0, 0, 0.7)' 
+                    : '0 0 10px rgba(0, 0, 0, 0.2)',
+                  minWidth: '200px'
+                }}
+                itemStyle={{
+                  color: isDarkMode ? 'white' : '#334155',
+                  padding: '3px 0'
+                }}
+                labelStyle={{
+                  color: isDarkMode ? '#3b82f6' : '#0070f3',
+                  fontWeight: 'bold',
+                  marginBottom: '5px',
+                  fontSize: '15px'
+                }}
+                cursor={false}
+                isAnimationActive={false}
+              />
+              <Bar 
+                yAxisId="left"
+                dataKey="satisfactionRate" 
+                fill="#8884d8" 
+                name="Satisfaction"
+              />
+              <Bar 
+                yAxisId="right"
+                dataKey="evaluations" 
+                fill="#82ca9d" 
+                name="Évaluations"
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default SatisfactionChart; 

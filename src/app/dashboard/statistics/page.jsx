@@ -1,106 +1,92 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState, lazy, Suspense, useEffect } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-// Chargement différé des composants de graphiques
-const ChartComponents = lazy(() => import('@/components/charts/ChartComponents'));
+import { getMetrics, getTimeseriesMetrics } from "@/app/api/metrics/route";
+import { DatePickerWithRange } from "@/components/ui/date-picker-with-range";
+import { addDays, format, subDays } from "date-fns";
+import ConversationsChart from "@/components/statistics/ConversationsChart";
+import SatisfactionChart from "@/components/statistics/SatisfactionChart";
+import TopSearchTermsChart from "@/components/statistics/TopSearchTermsChart";
+import RAGMetricsChart from "@/components/statistics/RAGMetricsChart";
+import GeneralMetricsCards from "@/components/statistics/GeneralMetricsCards";
+import RAGMetricsCards from "@/components/statistics/RAGMetricsCards";
 
 export default function StatisticsPage() {
-  const [timeRange, setTimeRange] = useState("week");
+  const [timeRange, setTimeRange] = useState("daily");
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    overview: {},
-    messages: {},
-    rag: {}
+  const [metricsData, setMetricsData] = useState(null);
+  const [timeseriesData, setTimeseriesData] = useState(null);
+  
+  // Initialiser avec les 30 derniers jours par défaut
+  const [dateRange, setDateRange] = useState({
+    from: subDays(new Date(), 30),
+    to: new Date()
   });
 
-  // Simuler le chargement des données depuis une API
+  // Charger les données des métriques
   useEffect(() => {
-    setLoading(true);
-    
-    // Données simulées pour les statistiques
-    setTimeout(() => {
-      setStats({
-        overview: {
-          totalUsers: 456,
-          totalMessages: 1234,
-          responseRate: 98,
-          avgResponseTime: 1.2,
-          userSatisfaction: 87
-        },
-        messages: {
-          messagesByDay: [
-            { day: "Lun", count: 120 },
-            { day: "Mar", count: 145 },
-            { day: "Mer", count: 132 },
-            { day: "Jeu", count: 167 },
-            { day: "Ven", count: 189 },
-            { day: "Sam", count: 95 },
-            { day: "Dim", count: 87 }
-          ],
-          messageCategories: [
-            { name: "Questions techniques", value: 45 },
-            { name: "Support client", value: 30 },
-            { name: "Documentation", value: 15 },
-            { name: "Autres", value: 10 }
-          ],
-          responseQuality: [
-            { name: "Excellent", value: 42 },
-            { name: "Bon", value: 38 },
-            { name: "Moyen", value: 15 },
-            { name: "Insuffisant", value: 5 }
-          ]
-        },
-        rag: {
-          topSearchTerms: [
-            { term: "configuration", count: 87 },
-            { term: "api", count: 65 },
-            { term: "documentation", count: 54 },
-            { term: "erreur", count: 43 },
-            { term: "connexion", count: 38 }
-          ],
-          ragUsage: [
-            { day: "Lun", count: 98 },
-            { day: "Mar", count: 112 },
-            { day: "Mer", count: 105 },
-            { day: "Jeu", count: 132 },
-            { day: "Ven", count: 145 },
-            { day: "Sam", count: 76 },
-            { day: "Dim", count: 65 }
-          ],
-          ragPerformance: {
-            precision: 92,
-            recall: 88,
-            latency: 1.2,
-            coverage: 85
-          }
-        }
-      });
-      setLoading(false);
-    }, 1000);
-  }, [timeRange]);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Formater les dates pour l'API
+        const startDate = dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : null;
+        const endDate = dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : null;
+        
+        const [metrics, timeseries] = await Promise.all([
+          getMetrics(startDate, endDate),
+          getTimeseriesMetrics(timeRange, startDate, endDate)
+        ]);
+        
+        // Formater les données de timeseries pour limiter les chiffres après la virgule
+        const formattedTimeseries = {
+          ...timeseries,
+          data: timeseries.data?.map(item => ({
+            ...item,
+            satisfaction_rate: item.satisfaction_rate !== null ? parseFloat(item.satisfaction_rate.toFixed(2)) : null,
+            avg_response_time: item.avg_response_time !== null ? parseFloat(item.avg_response_time.toFixed(2)) : null
+          }))
+        };
+        
+        setMetricsData(metrics);
+        setTimeseriesData(formattedTimeseries);
+      } catch (error) {
+        console.error("Erreur lors du chargement des métriques:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Couleurs pour les graphiques
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+    fetchData();
+  }, [timeRange, dateRange]);
+
+  // Gérer le changement de plage de dates
+  const handleDateRangeChange = (range) => {
+    setDateRange(range);
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Statistiques</h1>
-        <div className="flex space-x-2">
+        <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+          <DatePickerWithRange 
+            dateRange={dateRange} 
+            onDateRangeChange={handleDateRangeChange} 
+            className="w-full md:w-auto"
+          />
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
-            className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+            className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary w-full md:w-auto"
           >
-            <option value="day">Aujourd'hui</option>
-            <option value="week">Cette semaine</option>
-            <option value="month">Ce mois</option>
-            <option value="year">Cette année</option>
+            <option value="hourly">Par heure</option>
+            <option value="daily">Par jour</option>
+            <option value="weekly">Par semaine</option>
+            <option value="monthly">Par mois</option>
+            <option value="yearly">Par année</option>
+            <option value="all_time">Tout le temps</option>
           </select>
         </div>
       </div>
@@ -119,190 +105,45 @@ export default function StatisticsPage() {
         ) : (
           <>
             <TabsContent value="overview">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Résumé des performances</CardTitle>
-                    <CardDescription>
-                      Métriques clés du chatbot
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">Temps de réponse moyen</p>
-                          <p className="text-2xl font-bold">{stats.overview.avgResponseTime}s</p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">Taux de réponse</p>
-                          <p className="text-2xl font-bold">{stats.overview.responseRate}%</p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">Utilisateurs actifs</p>
-                          <p className="text-2xl font-bold">{stats.overview.totalUsers}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">Satisfaction utilisateur</p>
-                          <p className="text-2xl font-bold">{stats.overview.userSatisfaction}%</p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Activité hebdomadaire</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                          data={stats.messages.messagesByDay}
-                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="day" />
-                          <YAxis />
-                          <Tooltip />
-                          <Line type="monotone" dataKey="count" stroke="#8884d8" activeDot={{ r: 8 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="space-y-6">
+                <GeneralMetricsCards 
+                  metrics={metricsData?.general} 
+                  timeseriesData={timeseriesData}
+                  dateRange={dateRange}
+                  timeRange={timeRange}
+                />
+                
+                <div className="grid gap-4 md:grid-cols-2">
+                  <ConversationsChart data={timeseriesData?.data} period={timeRange} />
+                  <SatisfactionChart data={timeseriesData?.data} period={timeRange} />
+                </div>
               </div>
             </TabsContent>
 
             <TabsContent value="messages">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Catégories de messages</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={stats.messages.messageCategories}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {stats.messages.messageCategories.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Qualité des réponses</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={stats.messages.responseQuality}
-                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="value" fill="#8884d8">
-                            {stats.messages.responseQuality.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <ConversationsChart data={timeseriesData?.data} period={timeRange} />
+                  <SatisfactionChart data={timeseriesData?.data} period={timeRange} />
+                </div>
+                
+                <div className="grid gap-4 md:grid-cols-1">
+                  <TopSearchTermsChart data={metricsData?.general?.top_terms} />
+                </div>
               </div>
             </TabsContent>
 
             <TabsContent value="rag">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Termes les plus recherchés</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-80">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={stats.rag.topSearchTerms}
-                          layout="vertical"
-                          margin={{ top: 5, right: 30, left: 60, bottom: 5 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis type="number" />
-                          <YAxis dataKey="term" type="category" />
-                          <Tooltip />
-                          <Bar dataKey="count" fill="#00C49F" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Performance RAG</CardTitle>
-                    <CardDescription>
-                      Métriques de la base de connaissances
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">Précision</p>
-                          <p className="text-2xl font-bold">{stats.rag.ragPerformance.precision}%</p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">Rappel</p>
-                          <p className="text-2xl font-bold">{stats.rag.ragPerformance.recall}%</p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">Latence</p>
-                          <p className="text-2xl font-bold">{stats.rag.ragPerformance.latency}s</p>
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-muted-foreground">Couverture</p>
-                          <p className="text-2xl font-bold">{stats.rag.ragPerformance.coverage}%</p>
-                        </div>
-                      </div>
-                      <div className="h-60 mt-4">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart
-                            data={stats.rag.ragUsage}
-                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="day" />
-                            <YAxis />
-                            <Tooltip />
-                            <Line type="monotone" dataKey="count" stroke="#0088FE" activeDot={{ r: 8 }} />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="space-y-6">
+                <RAGMetricsCards 
+                  metrics={metricsData?.rag} 
+                  itemsCount={metricsData?.rag_items_count} 
+                />
+                
+                <div className="grid gap-4 md:grid-cols-2">
+                  <RAGMetricsChart data={timeseriesData?.data} period={timeRange} />
+                  <TopSearchTermsChart data={metricsData?.session?.top_search_terms} />
+                </div>
               </div>
             </TabsContent>
           </>
