@@ -3,19 +3,30 @@ const API_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
 
 const fetchWithAuth = async (endpoint) => {
     try {
+        // Vérifier si les variables d'environnement sont définies
+        if (!API_URL || !API_TOKEN) {
+            throw new Error("Configuration API manquante: URL ou token non défini");
+        }
+
         const response = await fetch(`${API_URL}${endpoint}`, {
             headers: {
                 'Authorization': `Bearer ${API_TOKEN}`
-            }
+            },
+            // Ajouter un timeout pour éviter les attentes infinies
+            signal: AbortSignal.timeout(10000) // 10 secondes de timeout
         });
 
         if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
+            throw new Error(`API error: ${response.status} - ${response.statusText}`);
         }
 
         return await response.json();
     } catch (error) {
         console.error("API fetch error:", error);
+        // Propager l'erreur avec un message plus descriptif
+        if (error.name === "AbortError") {
+            throw new Error("La requête a expiré. Le serveur API est peut-être indisponible.");
+        }
         throw error;
     }
 };

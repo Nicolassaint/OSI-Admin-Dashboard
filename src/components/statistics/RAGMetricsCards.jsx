@@ -7,38 +7,43 @@ const MetricCard = ({ title, value, description, unit = "" }) => (
     </CardHeader>
     <CardContent>
       <div className="text-2xl font-bold">
-        {typeof value === 'number' ? value.toFixed(2) : value}{unit}
+        {typeof value === 'number' 
+          ? Number.isInteger(value) ? value : value.toFixed(2) 
+          : value}{unit}
       </div>
       {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
     </CardContent>
   </Card>
 );
 
-const RAGMetricsCards = ({ metrics, itemsCount }) => {
-  if (!metrics) return null;
+const RAGMetricsCards = ({ metrics, itemsCount, timeseriesData }) => {
+  if (!metrics && !timeseriesData?.aggregated?.rag_metrics) return null;
+  
+  const aggregatedData = timeseriesData?.aggregated?.rag_metrics;
+  const totalConversations = timeseriesData?.aggregated?.total_count || metrics?.total_conversations;
   
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <MetricCard 
-        title="Documents RAG" 
-        value={itemsCount} 
-        description="Nombre total de documents dans la base RAG"
+        title="Conversations" 
+        value={totalConversations} 
+        description="Nombre total de conversations"
       />
       <MetricCard 
         title="Temps de requête" 
-        value={metrics.avg_query_time} 
+        value={aggregatedData?.avg_query_time || metrics?.avg_query_time} 
         unit="s"
         description="Temps moyen de recherche vectorielle"
       />
       <MetricCard 
         title="Temps LLM" 
-        value={metrics.avg_llm_time} 
+        value={aggregatedData?.avg_llm_time || metrics?.avg_llm_time} 
         unit="s"
         description="Temps moyen de génération LLM"
       />
       <MetricCard 
         title="Taux chunk défaut" 
-        value={metrics.default_chunk_rate * 100} 
+        value={aggregatedData?.default_chunk_rate || metrics?.default_chunk_rate} 
         unit="%"
         description="Pourcentage d'utilisation du chunk par défaut"
       />

@@ -3,8 +3,12 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useTheme } from "next-themes";
+import { useRef, useEffect, useState } from "react";
 
 const ConversationsChart = ({ data, period = "daily" }) => {
+  const chartRef = useRef(null);
+  const [chartInstance, setChartInstance] = useState(null);
+
   // Utiliser le hook useTheme pour obtenir le thème actuel
   const { theme } = useTheme();
   const isDarkMode = theme === "dark";
@@ -57,18 +61,22 @@ const ConversationsChart = ({ data, period = "daily" }) => {
     }
   };
 
-  // Déterminer le titre en fonction de la période
+  // Définir la fonction getChartTitle avant de l'utiliser
   const getChartTitle = () => {
-    switch(period) {
-      case "hourly": return "Conversations par heure";
-      case "daily": return "Conversations quotidiennes";
-      case "weekly": return "Conversations hebdomadaires";
-      case "monthly": return "Conversations mensuelles";
-      case "yearly": return "Conversations annuelles";
-      case "all_time": return "Conversations (toutes périodes)";
-      default: return "Conversations";
+    switch (period) {
+      case 'hourly': return 'Conversations par heure';
+      case 'daily': return 'Conversations par jour';
+      case 'weekly': return 'Conversations par semaine';
+      case 'monthly': return 'Conversations par mois';
+      case 'yearly': return 'Conversations par année';
+      case 'all_time': return 'Conversations (toutes périodes)';
+      default: return 'Conversations';
     }
   };
+
+  useEffect(() => {
+    // ... code existant ...
+  }, [data, period]);
 
   return (
     <Card>

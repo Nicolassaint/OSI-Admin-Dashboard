@@ -9,6 +9,19 @@ const SatisfactionChart = ({ data, period = "daily" }) => {
   const { theme } = useTheme();
   const isDarkMode = theme === "dark";
 
+  // Déterminer le titre en fonction de la période
+  const getChartTitle = () => {
+    switch(period) {
+      case "hourly": return "Satisfaction par heure";
+      case "daily": return "Satisfaction quotidienne";
+      case "weekly": return "Satisfaction hebdomadaire";
+      case "monthly": return "Satisfaction mensuelle";
+      case "yearly": return "Satisfaction annuelle";
+      case "all_time": return "Satisfaction (toutes périodes)";
+      default: return "Satisfaction utilisateur";
+    }
+  };
+
   // Filtrer les données pour n'inclure que celles avec un taux de satisfaction
   const chartData = data?.filter(item => item.satisfaction_rate !== null && item.satisfaction_rate !== undefined)
     .map(item => ({
@@ -51,19 +64,6 @@ const SatisfactionChart = ({ data, period = "daily" }) => {
       return dateStr;
     } catch (e) {
       return dateStr;
-    }
-  };
-
-  // Déterminer le titre en fonction de la période
-  const getChartTitle = () => {
-    switch(period) {
-      case "hourly": return "Satisfaction par heure";
-      case "daily": return "Satisfaction quotidienne";
-      case "weekly": return "Satisfaction hebdomadaire";
-      case "monthly": return "Satisfaction mensuelle";
-      case "yearly": return "Satisfaction annuelle";
-      case "all_time": return "Satisfaction (toutes périodes)";
-      default: return "Satisfaction utilisateur";
     }
   };
 
