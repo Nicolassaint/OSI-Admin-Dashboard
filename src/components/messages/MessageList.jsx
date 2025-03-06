@@ -1,6 +1,8 @@
 import MessageCard from "./MessageCard";
 import Pagination from "@/components/ui/pagination";
 import { useState, useEffect } from "react";
+import { ArchiveIcon } from "@radix-ui/react-icons";
+import { Button } from "@/components/ui/button";
 
 export default function MessageList({ 
   messages, 
@@ -8,6 +10,7 @@ export default function MessageList({
   error, 
   onMarkAsResolved, 
   onDelete, 
+  onArchive,
 }) {
   const ITEMS_PER_PAGE = 5; // Nombre de messages par page
   const [currentPage, setCurrentPage] = useState(1);
@@ -90,8 +93,38 @@ export default function MessageList({
             message={message}
             onMarkAsResolved={onMarkAsResolved}
             onDelete={onDelete}
+            onArchive={onArchive}
             formatDate={formatDate}
-          />
+          >
+            <div className="flex space-x-2">
+              {message.status !== 'resolu' && message.status !== 'archive' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onMarkAsResolved(message.id)}
+                >
+                  Marquer comme résolu
+                </Button>
+              )}
+              {message.status !== 'archive' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onArchive(message.id)}
+                >
+                  <ArchiveIcon className="h-4 w-4 mr-1" />
+                  Archiver
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onDelete(message.id)}
+              >
+                Supprimer
+              </Button>
+            </div>
+          </MessageCard>
         ))}
       </div>
       

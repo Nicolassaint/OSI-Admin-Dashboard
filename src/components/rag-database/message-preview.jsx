@@ -6,6 +6,16 @@ export default function MessagePreview({ message }) {
     <div className="space-y-4">
       <p className="font-medium text-sm">
         Message: {message.label}
+        {message.status && (
+          <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+            message.status === 'resolu' ? 'bg-green-100 text-green-800' :
+            message.status === 'archive' ? 'bg-gray-100 text-gray-800' :
+            'bg-yellow-100 text-yellow-800'
+          }`}>
+            {message.status === 'resolu' ? 'Résolu' :
+             message.status === 'archive' ? 'Archivé' : 'En attente'}
+          </span>
+        )}
       </p>
       {message.bubbles && message.bubbles.length > 0 && (
         <div className="mt-2 text-sm">
@@ -35,6 +45,7 @@ export default function MessagePreview({ message }) {
                 key={index}
                 variant={button.type === 'primary' ? 'default' : 'outline'}
                 size="sm"
+                className="pointer-events-none hover:bg-background hover:text-foreground"
               >
                 {button.label}
               </Button>

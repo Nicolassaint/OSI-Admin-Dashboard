@@ -55,7 +55,7 @@ export default function MessagesPage() {
             message: conv.user_message,
             response: conv.response || "",
             timestamp: conv.timestamp,
-            status: conv.status || "pending",
+            status: conv.status || (conv.evaluation?.rating === 1 ? 'resolu' : 'en_attente'),
             evaluation: conv.evaluation?.rating === 1 ? 1 : conv.evaluation?.rating === 0 ? 0 : null,
             video: conv.video,
             image: conv.image,
@@ -129,48 +129,89 @@ export default function MessagesPage() {
         ws.onmessage = (event) => {
           try {
             const message = JSON.parse(event.data);
-            // console.log("Données WebSocket reçues:", message);
             
-            // Vérifier si c'est un message de type 'new_conversation'
-            if (message.type === 'new_conversation' && message.data) {
-              const data = message.data;
-              
-              // Vérifier si les données ont la structure attendue
-              if (!data || (!data.id && !data._id)) {
-                console.error("Données WebSocket invalides:", data);
-                return;
-              }
-              
-              // Transformer la nouvelle conversation au format attendu
-              const formattedMessage = {
-                id: data.id || data._id,
-                user: "Utilisateur",
-                message: data.user_message || "",
-                response: data.response || "",
-                timestamp: data.timestamp || new Date().toISOString(),
-                status: data.status || "pending",
-                evaluation: data.evaluation?.rating === 1 ? 1 : data.evaluation?.rating === 0 ? 0 : null,
-                video: data.video,
-                image: data.image,
-                buttons: data.buttons || []
-              };
-              
-              // Ajouter le nouveau message ou mettre à jour un existant
-              setMessages(prevMessages => {
-                const exists = prevMessages.some(msg => msg.id === formattedMessage.id);
-                if (exists) {
-                  return prevMessages.map(msg => 
-                    msg.id === formattedMessage.id ? formattedMessage : msg
-                  );
-                } else {
-                  return [formattedMessage, ...prevMessages];
+            switch (message.type) {
+              case 'update_conversation':
+                if (message.data) {
+                  setMessages(prevMessages => {
+                    return prevMessages.map(msg => {
+                      if (msg.id === message.data.id) {
+                        return {
+                          ...msg,
+                          status: message.data.status || msg.status,
+                          evaluation: message.data.evaluation?.rating === 1 ? 1 :
+                                     message.data.evaluation?.rating === 0 ? 0 : null
+                        };
+                      }
+                      return msg;
+                    });
+                  });
                 }
-              });
-            } else {
-              // console.log("Message WebSocket ignoré (type non géré):", message);
+                break;
+                
+              case 'evaluation_update':
+                if (message.data) {
+                  setMessages(prevMessages => {
+                    return prevMessages.map(msg => {
+                      if (msg.id === message.data.id) {
+                        // Déterminer le nouveau statut en fonction de l'évaluation
+                        const newStatus = message.data.evaluation?.rating !== undefined ? 'resolu' : 'en_attente';
+                        
+                        return {
+                          ...msg,
+                          status: newStatus,
+                          evaluation: message.data.evaluation?.rating === 1 ? 1 :
+                                     message.data.evaluation?.rating === 0 ? 0 : null
+                        };
+                      }
+                      return msg;
+                    });
+                  });
+                }
+                break;
+                
+              case 'new_conversation':
+                if (message.data) {
+                  const data = message.data;
+                  
+                  if (!data || (!data.id && !data._id)) {
+                    console.error("Données WebSocket invalides:", data);
+                    return;
+                  }
+                  
+                  const formattedMessage = {
+                    id: data.id || data._id,
+                    user: "Utilisateur",
+                    message: data.user_message || "",
+                    response: data.response || "",
+                    timestamp: data.timestamp || new Date().toISOString(),
+                    status: data.status || 'en_attente',
+                    evaluation: data.evaluation?.rating === 1 ? 1 : 
+                               data.evaluation?.rating === 0 ? 0 : null,
+                    video: data.video,
+                    image: data.image,
+                    buttons: data.buttons || []
+                  };
+                  
+                  setMessages(prevMessages => {
+                    const exists = prevMessages.some(msg => msg.id === formattedMessage.id);
+                    if (exists) {
+                      return prevMessages.map(msg => 
+                        msg.id === formattedMessage.id ? formattedMessage : msg
+                      );
+                    } else {
+                      return [formattedMessage, ...prevMessages];
+                    }
+                  });
+                }
+                break;
+                
+              case 'metrics_update':
+                // Gérer la mise à jour des métriques si nécessaire
+                break;
             }
           } catch (err) {
-            console.error("Erreur lors du traitement du message WebSocket:", err, "Données brutes:", event.data);
+            console.error("Erreur lors du traitement du message WebSocket:", err);
           }
         };
         
@@ -224,7 +265,11 @@ export default function MessagesPage() {
     
     // Filtrage par statut
     if (filter !== "all") {
-      result = result.filter((message) => message.status === filter);
+      result = result.filter((message) => {
+        // S'assurer que le status est bien défini
+        const messageStatus = message.status || 'en_attente';
+        return messageStatus === filter;
+      });
     }
     
     // Filtrage par évaluation
@@ -263,14 +308,33 @@ export default function MessagesPage() {
     });
   }, [messages, filter, searchTerm, sortOrder, evaluationFilter]);
 
-  // Marquer un message comme résolu
-  const markAsResolved = (id) => {
-    setMessages(
-      messages.map((message) =>
-        message.id === id ? { ...message, status: "resolved" } : message
-      )
-    );
+  // Mettre à jour la fonction markAsResolved pour utiliser l'API
+  const updateMessageStatus = async (id, status) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
+      
+      const response = await fetch(`${apiUrl}/api/conversation/${id}/status?token=${apiToken}&status=${status}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      // La mise à jour se fera via WebSocket
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour du status:", error);
+      setError("Impossible de mettre à jour le status du message");
+    }
   };
+
+  // Mettre à jour les fonctions de gestion des statuts
+  const markAsResolved = (id, newStatus = 'resolu') => updateMessageStatus(id, newStatus);
+  const archiveMessage = (id) => updateMessageStatus(id, 'archive');
 
   // Supprimer un message (pourrait être adapté pour appeler votre API)
   const deleteMessage = (id) => {
