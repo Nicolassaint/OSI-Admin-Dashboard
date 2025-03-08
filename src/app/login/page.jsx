@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,28 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [apiStatus, setApiStatus] = useState({ isChecking: true, isOnline: true });
+
+  useEffect(() => {
+    checkApiHealth();
+  }, []);
+
+  const checkApiHealth = async () => {
+    setApiStatus({ isChecking: true, isOnline: true });
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/health`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
+        },
+      });
+      
+      setApiStatus({ isChecking: false, isOnline: response.ok });
+    } catch (error) {
+      console.error("API health check failed:", error);
+      setApiStatus({ isChecking: false, isOnline: false });
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,6 +60,40 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  // Si l'API est hors ligne, afficher un message d'erreur
+  if (!apiStatus.isChecking && !apiStatus.isOnline) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Card className="w-full max-w-md bg-card border-border">
+          <CardHeader className="space-y-1">
+            <div className="flex justify-center mb-4">
+              <Image
+                src="/OSI_logo.png"
+                alt="OSI Logo"
+                width={150}
+                height={150}
+                priority
+              />
+            </div>
+            <CardTitle className="text-2xl text-center">Service indisponible</CardTitle>
+            <CardDescription className="text-center">
+              Le serveur backend est actuellement inaccessible. Veuillez réessayer ultérieurement.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Button 
+              onClick={checkApiHealth} 
+              className="mt-4"
+              disabled={apiStatus.isChecking}
+            >
+              {apiStatus.isChecking ? "Vérification..." : "Réessayer"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">

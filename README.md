@@ -37,7 +37,6 @@ Ce projet est un tableau de bord d'administration pour OSI, développé avec Nex
       NEXTAUTH_SECRET=votre_secret_securise_pour_nextauth
 
       NEXT_PUBLIC_API_URL=http://localhost:5000
-      NEXT_PUBLIC_PROMETHEUS_URL=http://localhost:9091
 
       NEXT_PUBLIC_API_TOKEN=osi_dashboard_secret_token_2024
       NEXT_PUBLIC_WEBSOCKET_TOKEN=osi_dashboard_secret_token_2024

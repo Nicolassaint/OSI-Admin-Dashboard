@@ -42,7 +42,7 @@ const RAGMetricsCards = ({ metrics, itemsCount, timeseriesData }) => {
         description="Temps moyen de génération LLM"
       />
       <MetricCard 
-        title="Taux chunk défaut" 
+        title="Taux message défaut" 
         value={aggregatedData?.default_chunk_rate || metrics?.default_chunk_rate} 
         unit="%"
         description="Pourcentage d'utilisation du chunk par défaut"

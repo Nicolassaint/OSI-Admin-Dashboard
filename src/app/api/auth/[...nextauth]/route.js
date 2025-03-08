@@ -1,32 +1,12 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { compare } from "bcrypt";
-
-// Liste des utilisateurs en dur (dans un environnement de production, utilisez une base de données)
-// Les mots de passe sont hachés avec bcrypt
-const users = [
-  {
-    id: "1",
-    name: "admin",
-    email: "admin",
-    password: "admin", // Mot de passe en clair
-    role: "admin",
-  },
-  {
-    id: "2",
-    name: "user",
-    email: "user",
-    password: "user", // Mot de passe en clair
-    role: "user",
-  },
-];
 
 export const authOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
@@ -35,33 +15,45 @@ export const authOptions = {
           return null;
         }
 
-        const user = users.find((user) => user.email === credentials.email);
+        try {
+          console.log("Attempting authentication with:", {
+            username: credentials.email,
+            password: "***" // Ne pas logger les mots de passe
+          });
+          
+          // Appel à votre API FastAPI pour vérifier les identifiants
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/check-credentials`, {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
+            },
+            body: JSON.stringify({
+              username: credentials.email,
+              password: credentials.password,
+            }),
+          });
 
-        if (!user) {
-          console.log("User not found", credentials.email);
+          if (!response.ok) {
+            const errorData = await response.text();
+            console.log("Authentication failed", response.status, errorData);
+            return null;
+          }
+
+          const userData = await response.json();
+          console.log("Authentication successful", userData);
+          
+          return {
+            id: userData.id,
+            name: userData.full_name || userData.username,
+            email: userData.email || credentials.email,
+            role: userData.role,
+            apiToken: process.env.NEXT_PUBLIC_API_TOKEN,
+          };
+        } catch (error) {
+          console.error("Authentication error:", error);
           return null;
         }
-
-        console.log("Comparing passwords:", {
-          provided: credentials.password,
-          stored: user.password,
-          match: credentials.password === user.password
-        });
-
-        // Comparaison directe des mots de passe (pour les tests uniquement)
-        const isPasswordValid = credentials.password === user.password;
-
-        if (isPasswordValid) {
-          return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-          };
-        }
-
-        console.log("Password invalid");
-        return null;
       },
     }),
   ],
@@ -73,6 +65,7 @@ export const authOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.apiToken = user.apiToken;
       }
       return token;
     },
@@ -80,6 +73,7 @@ export const authOptions = {
       if (token) {
         session.user.id = token.id;
         session.user.role = token.role;
+        session.apiToken = token.apiToken;
       }
       return session;
     },
@@ -89,8 +83,9 @@ export const authOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 jours
   },
   secret: process.env.NEXTAUTH_SECRET || "votre_secret_temporaire_pour_dev",
+  debug: process.env.NODE_ENV === "development",
 };
 
 const handler = NextAuth(authOptions);
 
-export { handler as GET, handler as POST }; 
+export { handler as GET, handler as POST };

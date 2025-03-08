@@ -2,7 +2,7 @@
 
 PID_FILE="./app.pid"
 LOGS_DIR="./logs"
-DEFAULT_PORT=8503
+DEFAULT_PORT=3333
 
 # Fonction pour arrêter l'application
 stop_app() {
@@ -63,7 +63,6 @@ NEXTAUTH_SECRET=votre_secret_securise_pour_nextauth
 
 ## API
 NEXT_PUBLIC_API_URL=https://osidev.olympia.bhub.cloud
-NEXT_PUBLIC_PROMETHEUS_URL=https://prometheus.osidev.olympia.bhub.cloud
 
 ## Tokens
 NEXT_PUBLIC_API_TOKEN=osi_dashboard_secret_token_2024
@@ -154,7 +153,7 @@ start_app() {
     done
 
     # Configurer l'environnement avec le port choisi
-    configure_env $port
+    # configure_env $port
 
     # Configuration des logs
     read -p "Voulez-vous enregistrer les logs ? (o/n): " save_logs
@@ -171,11 +170,23 @@ start_app() {
     fi
 
     echo "Démarrage de l'application sur le port $port..."
+    # Renommer temporairement .env.local s'il existe
+    if [ -f ".env.local" ]; then
+        mv .env.local .env.local.backup
+        echo "Fichier .env.local temporairement sauvegardé"
+    fi
+
     nohup npm run start -- -p $port > "$LOG_FILE" 2>&1 &
     sleep 2  # Attendre que le processus next-server démarre
     port_pid=$(lsof -ti :$port)  # Récupérer le vrai PID
     echo $port_pid > "$PID_FILE"
     echo "Application démarrée avec PID: $port_pid"
+
+    # Restaurer .env.local s'il existait
+    if [ -f ".env.local.backup" ]; then
+        mv .env.local.backup .env.local
+        echo "Fichier .env.local restauré"
+    fi
 }
 
 # Fonction pour redémarrer l'application
