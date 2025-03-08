@@ -12,7 +12,6 @@ import {
 } from "@radix-ui/react-icons";
 import { useEffect, useState } from "react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
 
 // Fonction pour récupérer les métriques depuis l'API

@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Upload, Download, Share2, Trash2 } from "lucide-react";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function JsonFileSettings() {
   const [uploadSuccess, setUploadSuccess] = useState(false);

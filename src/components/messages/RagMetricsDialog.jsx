@@ -18,8 +18,6 @@ export default function RagMetricsDialog({
 }) {
   const router = useRouter();
 
-  console.log("RAG Metrics:", metrics);
-
   const handleEditSource = (label) => {
     onOpenChange(false);
     router.push(`/dashboard/rag-database/edit/${encodeURIComponent(label)}`);

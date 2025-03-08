@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MagnifyingGlassIcon, PlusIcon, Pencil1Icon, TrashIcon, ArrowLeftIcon } from "@radix-ui/react-icons";
+import { MagnifyingGlassIcon, PlusIcon, Pencil1Icon, TrashIcon } from "@radix-ui/react-icons";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
@@ -356,6 +356,7 @@ export default function RagDatabasePage() {
                           onClick={() => {
                             router.push(`/dashboard/rag-database/edit/${encodeURIComponent(entry.id)}`);
                           }}
+                          title="Modifier l'entrée"
                         >
                           <Pencil1Icon className="h-4 w-4" />
                         </Button>
@@ -363,6 +364,7 @@ export default function RagDatabasePage() {
                           variant="outline"
                           size="sm" 
                           onClick={() => setDeleteConfirmation({ show: true, entryId: entry.id })}
+                          title="Supprimer l'entrée"
                         >
                           <TrashIcon className="h-4 w-4" />
                         </Button>

@@ -4,13 +4,12 @@ import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getMetrics, getTimeseriesMetrics } from "@/app/api/metrics/route";
 import { DatePickerWithRange } from "@/components/ui/date-picker-with-range";
-import { addDays, format, subDays } from "date-fns";
+import { format, subDays } from "date-fns";
 import ConversationsChart from "@/components/statistics/ConversationsChart";
 import SatisfactionChart from "@/components/statistics/SatisfactionChart";
 import GeneralMetricsCards from "@/components/statistics/GeneralMetricsCards";
 import RAGMetricsCards from "@/components/statistics/RAGMetricsCards";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import TopChunksChart from "@/components/statistics/TopChunksChart";
 import { Button } from "@/components/ui/button";
 

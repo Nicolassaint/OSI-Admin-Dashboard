@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import Link from "next/link";
 import GeneralInfoTab from "@/components/rag-database/general-info-tab";
 import MessagesTab from "@/components/rag-database/messages-tab";
 import React from 'react';
