@@ -2,12 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TrashIcon, InfoCircledIcon, ArchiveIcon } from "@radix-ui/react-icons";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import RagMetricsDialog from "@/components/messages/RagMetricsDialog";
 
 export default function MessageCard({ 
   message, 
@@ -149,6 +144,7 @@ export default function MessageCard({
             variant="outline"
             size="sm"
             onClick={() => setShowDeleteConfirm(true)}
+            title="Supprimer la conversation"
           >
             <TrashIcon className="h-4 w-4" />
           </Button>
@@ -270,73 +266,13 @@ export default function MessageCard({
       />
 
       {/* Popup pour afficher les métriques RAG */}
-      <Dialog open={showRagMetrics} onOpenChange={setShowRagMetrics}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Métriques RAG</DialogTitle>
-          </DialogHeader>
-          
-          {isLoadingMetrics ? (
-            <div className="flex justify-center py-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : metricsError ? (
-            <div className="text-center py-4 text-red-500">
-              {metricsError}
-            </div>
-          ) : ragMetrics ? (
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-medium mb-2">Sources utilisées pour la réponse:</h3>
-                {ragMetrics.top_results && ragMetrics.top_results.length > 0 ? (
-                  <div className="space-y-2">
-                    {ragMetrics.top_results.map((result, index) => (
-                      <div key={index} className="border rounded p-2">
-                        <div className="flex justify-between">
-                          <span className="font-medium">{result.label}</span>
-                          <span className="text-sm text-muted-foreground">
-                            Score: {(result.score * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="mt-1 w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-primary h-2 rounded-full" 
-                            style={{ width: `${result.score * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Aucune source disponible</p>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-2 gap-2">
-                <div className="border rounded p-2">
-                  <p className="text-sm font-medium">Temps de traitement total</p>
-                  <p className="text-lg">{ragMetrics.processing_time?.toFixed(2) || "N/A"} s</p>
-                </div>
-                <div className="border rounded p-2">
-                  <p className="text-sm font-medium">Temps de traitement LLM</p>
-                  <p className="text-lg">{ragMetrics.llm_processing_time?.toFixed(2) || "N/A"} s</p>
-                </div>
-              </div>
-              
-              {ragMetrics.default_chunk_used !== undefined && (
-                <div className="border rounded p-2">
-                  <p className="text-sm font-medium">Chunk par défaut utilisé</p>
-                  <p>{ragMetrics.default_chunk_used ? "Oui" : "Non"}</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-4 text-muted-foreground">
-              Aucune métrique RAG disponible pour cette conversation.
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <RagMetricsDialog
+        isOpen={showRagMetrics}
+        onOpenChange={setShowRagMetrics}
+        isLoading={isLoadingMetrics}
+        error={metricsError}
+        metrics={ragMetrics}
+      />
     </div>
   );
 } 

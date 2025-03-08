@@ -21,20 +21,20 @@ const GeneralMetricsCards = ({ metrics, timeseriesData }) => {
   // Utiliser les données agrégées du timeseriesData si disponibles
   const aggregatedData = timeseriesData?.aggregated;
   
-  // Ajouter des console.log pour déboguer
-  console.log("GeneralMetricsCards - metrics:", metrics);
-  console.log("GeneralMetricsCards - timeseriesData:", timeseriesData);
-  console.log("GeneralMetricsCards - aggregatedData:", aggregatedData);
+  // // Ajouter des console.log pour déboguer
+  // console.log("GeneralMetricsCards - metrics:", metrics);
+  // console.log("GeneralMetricsCards - timeseriesData:", timeseriesData);
+  // console.log("GeneralMetricsCards - aggregatedData:", aggregatedData);
   
-  // Vérifier les valeurs spécifiques pour le taux d'évaluation
-  console.log("Taux d'évaluation - données:", {
-    total_evaluations: aggregatedData?.total_evaluations,
-    total_count: aggregatedData?.total_count,
-    calculated: aggregatedData?.total_evaluations > 0 
-      ? (aggregatedData.total_evaluations / aggregatedData.total_count * 100) 
-      : "Utilisant metrics.evaluation_rate",
-    metrics_rate: metrics?.evaluation_rate
-  });
+  // // Vérifier les valeurs spécifiques pour le taux d'évaluation
+  // console.log("Taux d'évaluation - données:", {
+  //   total_evaluations: aggregatedData?.total_evaluations,
+  //   total_count: aggregatedData?.total_count,
+  //   calculated: aggregatedData?.total_evaluations > 0 
+  //     ? (aggregatedData.total_evaluations / aggregatedData.total_count * 100) 
+  //     : "Utilisant metrics.evaluation_rate",
+  //   metrics_rate: metrics?.evaluation_rate
+  // });
   
   // Vérifier les valeurs pour le taux de satisfaction
   console.log("Taux de satisfaction - données:", {
