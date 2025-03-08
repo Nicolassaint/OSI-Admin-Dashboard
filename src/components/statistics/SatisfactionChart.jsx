@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useTheme } from "next-themes";
@@ -140,6 +140,18 @@ const SatisfactionChart = ({ data, period = "daily" }) => {
                 strokeWidth={2}
                 dot={{ r: 4 }}
                 activeDot={{ r: 6, stroke: '#82ca9d', strokeWidth: 2 }}
+              />
+              <Legend 
+                verticalAlign="bottom" 
+                height={36}
+                wrapperStyle={{
+                  paddingTop: '10px',
+                  fontSize: '14px',
+                  color: isDarkMode ? 'white' : '#334155'
+                }}
+                formatter={(value) => {
+                  return <span style={{ color: isDarkMode ? 'white' : '#334155' }}>{value}</span>;
+                }}
               />
             </LineChart>
           </ResponsiveContainer>
