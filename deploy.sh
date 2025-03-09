@@ -51,26 +51,6 @@ stop_app() {
     fi
 }
 
-# Fonction pour configurer l'environnement
-configure_env() {
-    local port=$1
-    
-    # Création/mise à jour du fichier .env
-    cat > .env << EOL
-## NextAuth
-NEXTAUTH_URL=http://localhost:$port
-NEXTAUTH_SECRET=votre_secret_securise_pour_nextauth
-
-## API
-NEXT_PUBLIC_API_URL=https://osidev.olympia.bhub.cloud
-
-## Tokens
-NEXT_PUBLIC_API_TOKEN=osi_dashboard_secret_token_2024
-NEXT_PUBLIC_WEBSOCKET_TOKEN=osi_dashboard_secret_token_2024
-EOL
-
-    echo "Fichier .env configuré pour le port $port"
-}
 
 # Fonction pour vérifier si un port est utilisé
 check_port() {
@@ -103,16 +83,6 @@ start_app() {
     if [ -f "$PID_FILE" ]; then
         echo "Une instance est déjà en cours d'exécution."
         exit 1
-    fi
-
-    # Demande si l'utilisateur veut build
-    read -p "Voulez-vous exécuter npm run build ? (o/n): " do_build
-
-    if [ "$do_build" = "o" ] || [ "$do_build" = "O" ]; then
-        echo "Suppression du dossier .next existant..."
-        rm -rf .next
-        echo "Exécution de npm run build..."
-        npm run build
     fi
 
     # Configuration du port
@@ -152,8 +122,21 @@ start_app() {
         fi
     done
 
-    # Configurer l'environnement avec le port choisi
-    configure_env $port
+    # Sauvegarder et supprimer .env.local s'il existe pour éviter qu'il ne soit pris en compte
+    if [ -f ".env.local" ]; then
+        echo "Sauvegarde temporaire de .env.local..."
+        mv .env.local .env.local.bak
+    fi
+
+    # Demande si l'utilisateur veut build
+    read -p "Voulez-vous exécuter npm run build ? (o/n): " do_build
+
+    if [ "$do_build" = "o" ] || [ "$do_build" = "O" ]; then
+        echo "Suppression du dossier .next existant..."
+        rm -rf .next
+        echo "Exécution de npm run build..."
+        npm run build
+    fi
 
     # Configuration des logs
     read -p "Voulez-vous enregistrer les logs ? (o/n): " save_logs
@@ -170,22 +153,17 @@ start_app() {
     fi
 
     echo "Démarrage de l'application sur le port $port..."
-    # Renommer temporairement .env.local s'il existe
-    if [ -f ".env.local" ]; then
-        mv .env.local .env.local.backup
-        echo "Fichier .env.local temporairement sauvegardé"
-    fi
-
+    
     nohup npm run start -- -p $port > "$LOG_FILE" 2>&1 &
     sleep 2  # Attendre que le processus next-server démarre
     port_pid=$(lsof -ti :$port)  # Récupérer le vrai PID
     echo $port_pid > "$PID_FILE"
     echo "Application démarrée avec PID: $port_pid"
-
-    # Restaurer .env.local s'il existait
-    if [ -f ".env.local.backup" ]; then
-        mv .env.local.backup .env.local
-        echo "Fichier .env.local restauré"
+    
+    # Restaurer .env.local s'il a été sauvegardé
+    if [ -f ".env.local.bak" ]; then
+        echo "Restauration de .env.local..."
+        mv .env.local.bak .env.local
     fi
 }
 
