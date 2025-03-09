@@ -126,6 +126,41 @@ export default function StatisticsPage() {
   // Gérer le changement de période
   const handleTimeRangeChange = (newTimeRange) => {
     setTimeRange(newTimeRange);
+    
+    // Mettre à jour immédiatement la plage de dates en fonction de la nouvelle période
+    let newFrom;
+    const today = new Date();
+    
+    switch(newTimeRange) {
+      case "hourly":
+        // Pour les données horaires, on se concentre sur la journée en cours
+        newFrom = new Date(today);
+        newFrom.setHours(0, 0, 0, 0);
+        break;
+      case "daily":
+        newFrom = subDays(today, 30);
+        break;
+      case "weekly":
+        newFrom = subDays(today, 90); // ~3 mois
+        break;
+      case "monthly":
+        newFrom = subDays(today, 365); // ~1 an
+        break;
+      case "yearly":
+      case "all_time":
+        newFrom = subDays(today, 1825); // ~5 ans
+        break;
+      default:
+        newFrom = subDays(today, 30);
+    }
+    
+    const newDateRange = {
+      from: newFrom,
+      to: today
+    };
+    
+    setDateRange(newDateRange);
+    // Pas besoin d'appeler fetchData ici car l'effet qui surveille dateRange le fera
   };
 
   // Déterminer si le sélecteur de date doit être en mode jour unique

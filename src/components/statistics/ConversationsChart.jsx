@@ -19,6 +19,13 @@ const ConversationsChart = ({ data, period = "daily" }) => {
     count: item.count || 0
   })) || [];
 
+  // Forcer le rafraîchissement du graphique quand les données ou la période changent
+  useEffect(() => {
+    if (chartRef.current && chartInstance) {
+      chartInstance.update();
+    }
+  }, [data, period, chartInstance]);
+
   // Si aucune donnée, afficher un message
   if (!data || data.length === 0) {
     return (
@@ -73,10 +80,6 @@ const ConversationsChart = ({ data, period = "daily" }) => {
       default: return 'Conversations';
     }
   };
-
-  useEffect(() => {
-    // ... code existant ...
-  }, [data, period]);
 
   return (
     <Card>

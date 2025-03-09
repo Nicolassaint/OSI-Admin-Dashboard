@@ -3,11 +3,22 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useTheme } from "next-themes";
+import { useRef, useState, useEffect } from "react";
 
 const SatisfactionChart = ({ data, period = "daily" }) => {
   // Utiliser le hook useTheme pour obtenir le thème actuel
   const { theme } = useTheme();
   const isDarkMode = theme === "dark";
+  
+  // Ajouter un effet pour forcer le rafraîchissement quand les données ou la période changent
+  const chartRef = useRef(null);
+  const [chartInstance, setChartInstance] = useState(null);
+  
+  useEffect(() => {
+    if (chartRef.current && chartInstance) {
+      chartInstance.update();
+    }
+  }, [data, period, chartInstance]);
 
   // Déterminer le titre en fonction de la période
   const getChartTitle = () => {
@@ -79,6 +90,7 @@ const SatisfactionChart = ({ data, period = "daily" }) => {
             <LineChart
               data={chartData}
               margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              ref={chartRef}
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
