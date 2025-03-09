@@ -15,60 +15,38 @@ const MetricCard = ({ title, value, unit = "" }) => (
   </Card>
 );
 
-const GeneralMetricsCards = ({ metrics, timeseriesData }) => {
-  if (!metrics && !timeseriesData?.aggregated) return null;
+const GeneralMetricsCards = ({ timeseriesData, dateRange, timeRange }) => {
+  // Gérer le cas où timeseriesData ou aggregated n'existe pas
+  const aggregatedData = timeseriesData?.aggregated || {};
   
-  // Utiliser les données agrégées du timeseriesData si disponibles
-  const aggregatedData = timeseriesData?.aggregated;
-  
-  // // Ajouter des console.log pour déboguer
-  // console.log("GeneralMetricsCards - metrics:", metrics);
-  // console.log("GeneralMetricsCards - timeseriesData:", timeseriesData);
-  // console.log("GeneralMetricsCards - aggregatedData:", aggregatedData);
-  
-  // // Vérifier les valeurs spécifiques pour le taux d'évaluation
-  // console.log("Taux d'évaluation - données:", {
-  //   total_evaluations: aggregatedData?.total_evaluations,
-  //   total_count: aggregatedData?.total_count,
-  //   calculated: aggregatedData?.total_evaluations > 0 
-  //     ? (aggregatedData.total_evaluations / aggregatedData.total_count * 100) 
-  //     : "Utilisant metrics.evaluation_rate",
-  //   metrics_rate: metrics?.evaluation_rate
-  // });
-  
-  // Vérifier les valeurs pour le taux de satisfaction
-  console.log("Taux de satisfaction - données:", {
-    avg_satisfaction_rate: aggregatedData?.avg_satisfaction_rate,
-    metrics_positive_rate: metrics?.positive_rate
-  });
-  
-  // Déterminer si nous avons des évaluations dans la période sélectionnée
+  // Déterminer si nous avons des données dans la période sélectionnée
+  const hasDataInPeriod = aggregatedData?.total_count > 0;
   const hasEvaluationsInPeriod = aggregatedData?.total_evaluations > 0;
   
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <MetricCard 
         title="Conversations totales" 
-        value={aggregatedData?.total_count || metrics?.total_conversations} 
+        value={hasDataInPeriod ? aggregatedData.total_count : "0"} 
       />
       <MetricCard 
         title="Temps de réponse moyen" 
-        value={aggregatedData?.avg_response_time || metrics?.avg_response_time} 
-        unit="s"
+        value={hasDataInPeriod && aggregatedData.avg_response_time !== null ? aggregatedData.avg_response_time : "N/A"} 
+        unit={hasDataInPeriod && aggregatedData.avg_response_time !== null ? "s" : ""}
       />
       <MetricCard 
         title="Taux d'évaluation" 
-        value={aggregatedData?.total_count > 0 
+        value={hasDataInPeriod 
           ? (aggregatedData.total_evaluations / aggregatedData.total_count * 100 || 0)
-          : metrics?.evaluation_rate} 
+          : "0"} 
         unit="%"
       />
       <MetricCard 
         title="Taux de satisfaction" 
         value={hasEvaluationsInPeriod 
           ? aggregatedData.avg_satisfaction_rate 
-          : (aggregatedData?.total_count > 0 ? "N/A" : metrics?.positive_rate)} 
-        unit={hasEvaluationsInPeriod || (aggregatedData?.total_count === 0 && metrics?.positive_rate) ? "%" : ""}
+          : "N/A"} 
+        unit={hasEvaluationsInPeriod ? "%" : ""}
       />
     </div>
   );

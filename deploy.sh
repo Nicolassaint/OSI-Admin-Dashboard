@@ -153,7 +153,7 @@ start_app() {
     done
 
     # Configurer l'environnement avec le port choisi
-    # configure_env $port
+    configure_env $port
 
     # Configuration des logs
     read -p "Voulez-vous enregistrer les logs ? (o/n): " save_logs

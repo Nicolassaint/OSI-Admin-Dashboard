@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getMetrics, getTimeseriesMetrics } from "@/app/api/metrics/route";
+import { getTimeseriesMetrics } from "@/app/api/metrics/route";
 import { DatePickerWithRange } from "@/components/ui/date-picker-with-range";
 import { format, subDays } from "date-fns";
 import ConversationsChart from "@/components/statistics/ConversationsChart";
@@ -17,7 +17,6 @@ export default function StatisticsPage() {
   const [timeRange, setTimeRange] = useState("daily");
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
-  const [metricsData, setMetricsData] = useState(null);
   const [timeseriesData, setTimeseriesData] = useState(null);
   const [error, setError] = useState(null);
   
@@ -26,6 +25,53 @@ export default function StatisticsPage() {
     from: subDays(new Date(), timeRange === "hourly" ? 0 : 30),
     to: new Date()
   });
+
+  // Extraire la fonction fetchData pour pouvoir l'appeler depuis plusieurs endroits
+  const fetchData = async (dates, currentTimeRange) => {
+    setLoading(true);
+    setError(null); // Réinitialiser l'erreur à chaque nouvelle requête
+    
+    try {
+      // Vérifier que les dates sont valides
+      if (!dates.from || !dates.to) {
+        throw new Error("Plage de dates invalide");
+      }
+      
+      // S'assurer que la date de début est antérieure à la date de fin
+      if (dates.from > dates.to) {
+        throw new Error("La date de début doit être antérieure à la date de fin");
+      }
+      
+      // Formater les dates pour l'API
+      const startDate = format(dates.from, 'yyyy-MM-dd');
+      const endDate = format(dates.to, 'yyyy-MM-dd');
+      
+      const timeseries = await getTimeseriesMetrics(currentTimeRange, startDate, endDate);
+      
+      // Formater les données de timeseries seulement si elles existent
+      if (timeseries && timeseries.data) {
+        const formattedData = {
+          ...timeseries,
+          data: timeseries.data.map(item => ({
+            ...item,
+            satisfaction_rate: item.satisfaction_rate !== null ? parseFloat(item.satisfaction_rate.toFixed(2)) : null,
+            avg_response_time: item.avg_response_time !== null ? parseFloat(item.avg_response_time.toFixed(2)) : null
+          }))
+        };
+        setTimeseriesData(formattedData);
+      } else {
+        // Si les données sont vides mais la requête a réussi
+        setTimeseriesData(timeseries || { data: [] });
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement des métriques:", error);
+      const errorMessage = error.message || "Erreur inconnue";
+      setError(`Impossible de charger les données statistiques: ${errorMessage}`);
+      setTimeseriesData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Mettre à jour la plage de dates lorsque la période change
   useEffect(() => {
@@ -61,78 +107,16 @@ export default function StatisticsPage() {
     };
     
     setDateRange(newDateRange);
-    
-    // Appeler directement fetchData avec les nouvelles dates
-    fetchData(newDateRange, timeRange);
+    // Ne pas appeler fetchData ici, il sera appelé par l'effet qui surveille dateRange
   }, [timeRange]);
-
-  // Extraire la fonction fetchData pour pouvoir l'appeler depuis plusieurs endroits
-  const fetchData = async (dates, currentTimeRange) => {
-    setLoading(true);
-    setError(null); // Réinitialiser l'erreur à chaque nouvelle requête
-    
-    try {
-      // Formater les dates pour l'API
-      const startDate = dates.from ? format(dates.from, 'yyyy-MM-dd') : null;
-      const endDate = dates.to ? format(dates.to, 'yyyy-MM-dd') : null;
-      
-      // Utiliser try/catch individuel pour chaque appel API
-      let metrics = null;
-      let timeseries = null;
-      
-      try {
-        metrics = await getMetrics(startDate, endDate);
-      } catch (metricsError) {
-        console.error("Erreur lors du chargement des métriques générales:", metricsError);
-        // Capturer le message d'erreur spécifique
-        const errorMessage = metricsError.message || "Erreur inconnue";
-        setError(`Impossible de charger les métriques générales: ${errorMessage}`);
-      }
-      
-      try {
-        timeseries = await getTimeseriesMetrics(currentTimeRange, startDate, endDate);
-        
-        // Formater les données de timeseries seulement si elles existent
-        if (timeseries && timeseries.data) {
-          timeseries = {
-            ...timeseries,
-            data: timeseries.data.map(item => ({
-              ...item,
-              satisfaction_rate: item.satisfaction_rate !== null ? parseFloat(item.satisfaction_rate.toFixed(2)) : null,
-              avg_response_time: item.avg_response_time !== null ? parseFloat(item.avg_response_time.toFixed(2)) : null
-            }))
-          };
-        }
-      } catch (timeseriesError) {
-        console.error("Erreur lors du chargement des métriques temporelles:", timeseriesError);
-        // Capturer le message d'erreur spécifique si pas déjà défini
-        if (!error) {
-          const errorMessage = timeseriesError.message || "Erreur inconnue";
-          setError(`Impossible de charger les métriques temporelles: ${errorMessage}`);
-        }
-      }
-      
-      // Mettre à jour l'état avec les données disponibles
-      if (metrics) setMetricsData(metrics);
-      if (timeseries) setTimeseriesData(timeseries);
-      
-      // Afficher une erreur générale seulement si les deux appels ont échoué et qu'aucun message spécifique n'a été défini
-      if (!metrics && !timeseries && !error) {
-        setError("Impossible de charger les données statistiques. Le serveur API est peut-être indisponible.");
-      }
-    } catch (error) {
-      console.error("Erreur globale lors du chargement des métriques:", error);
-      const errorMessage = error.message || "Erreur inconnue";
-      setError(`Impossible de charger les données statistiques: ${errorMessage}`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Charger les données des métriques quand dateRange change
   useEffect(() => {
-    fetchData(dateRange, timeRange);
-  }, [dateRange]);
+    // Vérifier que dateRange contient des valeurs valides avant d'appeler fetchData
+    if (dateRange.from && dateRange.to) {
+      fetchData(dateRange, timeRange);
+    }
+  }, [dateRange, timeRange]);
 
   // Gérer le changement de plage de dates
   const handleDateRangeChange = (range) => {
@@ -209,7 +193,6 @@ export default function StatisticsPage() {
                 {!error && (
                   <>
                     <GeneralMetricsCards 
-                      metrics={metricsData?.general} 
                       timeseriesData={timeseriesData}
                       dateRange={dateRange}
                       timeRange={timeRange}
@@ -221,7 +204,7 @@ export default function StatisticsPage() {
                     </div>
                   </>
                 )}
-                {error && !metricsData && !timeseriesData && (
+                {error && !timeseriesData && (
                   <div className="p-8 text-center text-muted-foreground">
                     <p>Les données ne sont pas disponibles actuellement.</p>
                     <p>Veuillez réessayer plus tard ou contacter l'administrateur.</p>
@@ -235,15 +218,13 @@ export default function StatisticsPage() {
                 {!error && (
                   <>
                     <RAGMetricsCards 
-                      metrics={metricsData?.rag} 
-                      itemsCount={metricsData?.rag_items_count}
                       timeseriesData={timeseriesData}
                     />
                     
                     <TopChunksChart data={timeseriesData?.top_chunks} />
                   </>
                 )}
-                {error && !metricsData && !timeseriesData && (
+                {error && !timeseriesData && (
                   <div className="p-8 text-center text-muted-foreground">
                     <p>Les données RAG ne sont pas disponibles actuellement.</p>
                     <p>Veuillez réessayer plus tard ou contacter l'administrateur.</p>

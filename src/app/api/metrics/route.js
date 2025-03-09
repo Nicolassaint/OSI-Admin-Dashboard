@@ -12,12 +12,13 @@ const fetchWithAuth = async (endpoint) => {
             headers: {
                 'Authorization': `Bearer ${API_TOKEN}`
             },
-            // Ajouter un timeout pour éviter les attentes infinies
-            signal: AbortSignal.timeout(10000) // 10 secondes de timeout
+            // Augmenter le timeout pour les requêtes volumineuses
+            signal: AbortSignal.timeout(30000) // 30 secondes de timeout
         });
 
         if (!response.ok) {
-            throw new Error(`API error: ${response.status} - ${response.statusText}`);
+            const errorText = await response.text().catch(() => "Aucun détail disponible");
+            throw new Error(`Erreur API: ${response.status} - ${response.statusText}. Détails: ${errorText}`);
         }
 
         return await response.json();
@@ -25,28 +26,10 @@ const fetchWithAuth = async (endpoint) => {
         console.error("API fetch error:", error);
         // Propager l'erreur avec un message plus descriptif
         if (error.name === "AbortError") {
-            throw new Error("La requête a expiré. Le serveur API est peut-être indisponible.");
+            throw new Error("La requête a expiré. Le serveur API est peut-être indisponible ou la requête est trop volumineuse.");
         }
         throw error;
     }
-};
-
-export const getMetrics = async (startDate = null, endDate = null) => {
-    let url = '/metrics';
-
-    // Ajouter les paramètres de date si fournis
-    if (startDate || endDate) {
-        url += '?';
-        if (startDate) {
-            url += `start_date=${encodeURIComponent(startDate)}`;
-        }
-
-        if (endDate) {
-            url += startDate ? `&end_date=${encodeURIComponent(endDate)}` : `end_date=${encodeURIComponent(endDate)}`;
-        }
-    }
-
-    return fetchWithAuth(url);
 };
 
 export const getTimeseriesMetrics = async (period = 'daily', startDate = null, endDate = null) => {
