@@ -27,7 +27,7 @@ export default function RagMetricsDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Métriques RAG</DialogTitle>
+          <DialogTitle>Métriques</DialogTitle>
           <DialogDescription>
             Détails des sources et métriques de performance
           </DialogDescription>
@@ -95,7 +95,7 @@ export default function RagMetricsDialog({
             
             {metrics.default_chunk_used !== undefined && (
               <div className="border rounded p-2">
-                <p className="text-sm font-medium">Chunk par défaut utilisé</p>
+                <p className="text-sm font-medium">Message par défaut utilisé</p>
                 <p>{metrics.default_chunk_used ? "Oui" : "Non"}</p>
               </div>
             )}

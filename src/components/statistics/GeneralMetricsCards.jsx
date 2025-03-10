@@ -35,7 +35,7 @@ const GeneralMetricsCards = ({ timeseriesData, dateRange, timeRange }) => {
         unit={hasDataInPeriod && aggregatedData.avg_response_time !== null ? "s" : ""}
       />
       <MetricCard 
-        title="Taux d'évaluation" 
+        title="Taux de conversation évaluée" 
         value={hasDataInPeriod 
           ? (aggregatedData.total_evaluations / aggregatedData.total_count * 100 || 0)
           : "0"} 

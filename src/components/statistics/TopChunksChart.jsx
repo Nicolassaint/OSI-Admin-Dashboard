@@ -32,7 +32,7 @@ const TopChunksChart = ({ data }) => {
     <Card className="col-span-2">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <CardTitle>Top 15 messages les plus utilisés</CardTitle>
+          <CardTitle>Top 15 applications ou services les plus demandés</CardTitle>
           <TooltipProvider>
             <UITooltip>
               <TooltipTrigger>
@@ -40,7 +40,7 @@ const TopChunksChart = ({ data }) => {
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs">
-                  Représente les premiers morceaux de texte fournis au LLM parmi un top 3 de résultats pour chaque requête
+                Représente les applications identifiées répondant à la question de l’utilisateur 
                 </p>
               </TooltipContent>
             </UITooltip>
@@ -64,7 +64,8 @@ const TopChunksChart = ({ data }) => {
                   tick={{ fontSize: 12 }}
                 />
                 <Tooltip 
-                  formatter={(value) => [`${value}`, 'Utilisations']}
+                  separator=" "
+                  formatter={(value) => [null, `${value} conversations`]}
                   labelFormatter={(label) => `${label}`}
                   contentStyle={{
                     backgroundColor: isDarkMode ? '#2a2a3c' : 'white',

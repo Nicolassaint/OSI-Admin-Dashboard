@@ -45,11 +45,26 @@ export default function SystemStatusIndicator() {
     }
   };
 
+  const getStatusText = () => {
+    switch (status) {
+      case "optimal":
+        return "Disponibilité optimale";
+      case "normal":
+        return "Disponibilité normale";
+      case "warning":
+        return "Disponibilité réduite";
+      case "critical":
+        return "Disponibilité critique";
+      default:
+        return "État inconnu";
+    }
+  };
+
   return (
     <div className="flex items-center gap-2">
       <div className={`h-3 w-3 rounded-full ${getStatusColor()} ${isLoading ? 'animate-pulse' : ''}`}></div>
       <span className="text-xs hidden sm:inline">
-        {status === "unknown" ? "État inconnu" : `Système: ${status}`}
+        {getStatusText()}
       </span>
     </div>
   );

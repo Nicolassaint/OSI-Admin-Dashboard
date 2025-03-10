@@ -199,7 +199,7 @@ export default function DashboardPage() {
     { name: "Total des messages", value: "...", icon: ChatBubbleIcon },
     { name: "Délai moyen de réponse", value: "...", icon: TimerIcon },
     { name: "Taux de satisfaction", value: "...", icon: BarChartIcon },
-    { name: "Entrées RAG", value: "...", icon: FileTextIcon },
+    { name: "Nombre d'entrées", value: "...", icon: FileTextIcon },
   ];
 
   // Stats avec les données de l'API
@@ -207,7 +207,7 @@ export default function DashboardPage() {
     { name: "Total des messages", value: metricsData.totalMessages, icon: ChatBubbleIcon },
     { name: "Délai moyen de réponse", value: metricsData.responseTime, icon: TimerIcon },
     { name: "Taux de satisfaction", value: metricsData.satisfactionRate, icon: BarChartIcon },
-    { name: "Entrées RAG", value: metricsData.ragItems, icon: FileTextIcon },
+    { name: "Nombre d'entrées", value: metricsData.ragItems, icon: FileTextIcon },
   ];
 
   return (

@@ -22,6 +22,7 @@ import { Suspense } from "react";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import axios from "axios";
+import SystemStatusIndicator from "@/components/layout/SystemStatusIndicator";
 
 // Ajout du composant de chargement avec logo rotatif
 function LoadingSpinner() {
@@ -37,68 +38,6 @@ function LoadingSpinner() {
           className="rounded-full"
         />
       </div>
-    </div>
-  );
-}
-
-// Composant d'état système avec pastille de couleur
-function SystemStatusIndicator() {
-  const [status, setStatus] = useState("unknown");
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Fonction pour récupérer l'état du système
-    const fetchSystemStatus = async () => {
-      try {
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/system-status`,
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
-            }
-          }
-        );
-        setStatus(response.data.status);
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Erreur lors de la récupération de l'état du système:", error);
-        setStatus("unknown");
-        setIsLoading(false);
-      }
-    };
-
-    // Appel initial
-    fetchSystemStatus();
-
-    // Mettre en place l'intervalle de 5 secondes
-    const intervalId = setInterval(fetchSystemStatus, 5000);
-
-    // Nettoyer l'intervalle lors du démontage du composant
-    return () => clearInterval(intervalId);
-  }, []);
-
-  // Déterminer la couleur de la pastille en fonction du statut
-  const getStatusColor = () => {
-    switch (status) {
-      case "optimal":
-        return "bg-green-500";
-      case "normal":
-        return "bg-blue-500";
-      case "saturé":
-        return "bg-yellow-500";
-      case "critique":
-        return "bg-red-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className={`h-3 w-3 rounded-full ${getStatusColor()} ${isLoading ? 'animate-pulse' : ''}`}></div>
-      <span className="text-xs hidden sm:inline">
-        {status === "unknown" ? "État inconnu" : `Système: ${status}`}
-      </span>
     </div>
   );
 }

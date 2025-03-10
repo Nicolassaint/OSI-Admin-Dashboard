@@ -33,7 +33,7 @@ export default function GeneralInfoTab({ entry, setEntry }) {
           value={entry.search || ''}
           onChange={(e) => setEntry({...entry, search: e.target.value})}
           placeholder="Termes de recherche"
-          className="min-h-[60px]"
+          className="min-h-[150px]"
         />
       </CardContent>
     </Card>

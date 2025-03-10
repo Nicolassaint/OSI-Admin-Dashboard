@@ -300,9 +300,6 @@ export default function RagDatabasePage() {
       <Card>
         <CardHeader>
           <CardTitle>Rechercher</CardTitle>
-          <CardDescription>
-            Recherchez dans la base de données RAG par nom, description ou contenu.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="relative">

@@ -332,14 +332,6 @@ export default function MessagesTab({ entry, setEntry }) {
                       entry.details.messages[activeMessageIndex].buttons.length === 0) && (
                       <div className="text-center py-8 border border-dashed rounded-md">
                         <p className="text-muted-foreground">Aucun bouton</p>
-                        <Button 
-                          variant="outline" 
-                          className="mt-2"
-                          onClick={() => addButton(activeMessageIndex)}
-                        >
-                          <PlusIcon className="mr-2 h-4 w-4" />
-                          Ajouter un bouton
-                        </Button>
                       </div>
                     )}
                   </div>
