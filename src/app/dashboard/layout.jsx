@@ -84,9 +84,9 @@ function SystemStatusIndicator() {
         return "bg-green-500";
       case "normal":
         return "bg-blue-500";
-      case "warning":
+      case "saturé":
         return "bg-yellow-500";
-      case "critical":
+      case "critique":
         return "bg-red-500";
       default:
         return "bg-gray-500";
