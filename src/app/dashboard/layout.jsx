@@ -21,6 +21,7 @@ import { signOut } from "next-auth/react";
 import { Suspense } from "react";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
+import axios from "axios";
 
 // Ajout du composant de chargement avec logo rotatif
 function LoadingSpinner() {
@@ -36,6 +37,68 @@ function LoadingSpinner() {
           className="rounded-full"
         />
       </div>
+    </div>
+  );
+}
+
+// Composant d'état système avec pastille de couleur
+function SystemStatusIndicator() {
+  const [status, setStatus] = useState("unknown");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Fonction pour récupérer l'état du système
+    const fetchSystemStatus = async () => {
+      try {
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/system-status`,
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
+            }
+          }
+        );
+        setStatus(response.data.status);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Erreur lors de la récupération de l'état du système:", error);
+        setStatus("unknown");
+        setIsLoading(false);
+      }
+    };
+
+    // Appel initial
+    fetchSystemStatus();
+
+    // Mettre en place l'intervalle de 5 secondes
+    const intervalId = setInterval(fetchSystemStatus, 5000);
+
+    // Nettoyer l'intervalle lors du démontage du composant
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Déterminer la couleur de la pastille en fonction du statut
+  const getStatusColor = () => {
+    switch (status) {
+      case "optimal":
+        return "bg-green-500";
+      case "normal":
+        return "bg-blue-500";
+      case "warning":
+        return "bg-yellow-500";
+      case "critical":
+        return "bg-red-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`h-3 w-3 rounded-full ${getStatusColor()} ${isLoading ? 'animate-pulse' : ''}`}></div>
+      <span className="text-xs hidden sm:inline">
+        {status === "unknown" ? "État inconnu" : `Système: ${status}`}
+      </span>
     </div>
   );
 }
@@ -131,44 +194,45 @@ export default function DashboardLayout({ children }) {
         <header className="bg-card border-b border-border shadow-sm z-10">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              <div className="flex items-center md:hidden">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                >
-                  {isMobileMenuOpen ? (
-                    <Cross2Icon className="h-5 w-5" />
-                  ) : (
-                    <DashboardIcon className="h-5 w-5" />
-                  )}
-                </Button>
-              </div>
               <div className="flex items-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const newTheme = theme === "dark" ? "light" : "dark";
-                    setTheme(newTheme);
-                    // Force la mise à jour immédiate du DOM
-                    document.documentElement.classList.toggle("dark", newTheme === "dark");
-                  }}
-                  className="mr-4 flex items-center gap-2"
-                >
-                  {theme === "dark" ? (
-                    <>
-                      <SunIcon className="h-4 w-4" />
-                      <span className="hidden sm:inline">Mode clair</span>
-                    </>
-                  ) : (
-                    <>
-                      <MoonIcon className="h-4 w-4" />
-                      <span className="hidden sm:inline">Mode sombre</span>
-                    </>
-                  )}
-                </Button>
-                <div className="ml-4 flex items-center md:ml-6">
+                <div className="flex items-center md:hidden">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  >
+                    {isMobileMenuOpen ? (
+                      <Cross2Icon className="h-5 w-5" />
+                    ) : (
+                      <DashboardIcon className="h-5 w-5" />
+                    )}
+                  </Button>
+                </div>
+                
+                {/* Groupe du milieu : toggle theme et utilisateur */}
+                <div className="flex items-center gap-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newTheme = theme === "dark" ? "light" : "dark";
+                      setTheme(newTheme);
+                      document.documentElement.classList.toggle("dark", newTheme === "dark");
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    {theme === "dark" ? (
+                      <>
+                        <SunIcon className="h-4 w-4" />
+                        <span className="hidden sm:inline">Mode clair</span>
+                      </>
+                    ) : (
+                      <>
+                        <MoonIcon className="h-4 w-4" />
+                        <span className="hidden sm:inline">Mode sombre</span>
+                      </>
+                    )}
+                  </Button>
                   <div className="text-sm font-medium">
                     {session?.user?.name || "Utilisateur"} 
                     {session?.user?.role && (
@@ -179,6 +243,9 @@ export default function DashboardLayout({ children }) {
                   </div>
                 </div>
               </div>
+
+              {/* État du système à droite */}
+              <SystemStatusIndicator />
             </div>
           </div>
         </header>
