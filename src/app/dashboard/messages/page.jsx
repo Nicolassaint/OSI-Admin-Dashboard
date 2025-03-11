@@ -157,7 +157,8 @@ export default function MessagesPage() {
                     return prevMessages.map(msg => {
                       if (msg.id === message.data.id) {
                         // Déterminer le nouveau statut en fonction de l'évaluation
-                        const newStatus = message.data.evaluation?.rating !== undefined ? 'resolu' : 'en_attente';
+                        // Une évaluation positive (1) marque comme résolu, une évaluation négative (0) reste en attente
+                        const newStatus = message.data.evaluation?.rating === 1 ? 'resolu' : 'en_attente';
                         
                         return {
                           ...msg,
@@ -181,13 +182,16 @@ export default function MessagesPage() {
                     return;
                   }
                   
+                  // Déterminer le statut en fonction de l'évaluation
+                  const status = data.evaluation?.rating === 1 ? 'resolu' : 'en_attente';
+                  
                   const formattedMessage = {
                     id: data.id || data._id,
                     user: "Utilisateur",
                     message: data.user_message || "",
                     response: data.response || "",
                     timestamp: data.timestamp || new Date().toISOString(),
-                    status: data.status || 'en_attente',
+                    status: data.status || status,
                     evaluation: data.evaluation?.rating === 1 ? 1 : 
                                data.evaluation?.rating === 0 ? 0 : null,
                     video: data.video,
