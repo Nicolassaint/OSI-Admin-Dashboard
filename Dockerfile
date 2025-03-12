@@ -8,8 +8,7 @@ RUN npm install
 
 # Copie du code source et build
 COPY . .
-# Suppression du .env.local avant le build
-RUN rm -f .env.local && npm run build
+RUN npm run build
 
 # Image finale
 FROM node:18-alpine
