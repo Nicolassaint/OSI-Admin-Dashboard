@@ -20,13 +20,12 @@ export const authOptions = {
             username: credentials.email,
             password: "***" // Ne pas logger les mots de passe
           });
-          
-          // Appel à votre API FastAPI pour vérifier les identifiants
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/check-credentials`, {
+
+          // Appel au proxy pour vérifier les identifiants
+          const response = await fetch(`${process.env.NEXTAUTH_URL}/api/proxy/auth/check-credentials`, {
             method: "POST",
-            headers: { 
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
+            headers: {
+              "Content-Type": "application/json"
             },
             body: JSON.stringify({
               username: credentials.email,
@@ -42,13 +41,12 @@ export const authOptions = {
 
           const userData = await response.json();
           console.log("Authentication successful", userData);
-          
+
           return {
             id: userData.id,
             name: userData.full_name || userData.username,
             email: userData.email || credentials.email,
-            role: userData.role,
-            apiToken: process.env.NEXT_PUBLIC_API_TOKEN,
+            role: userData.role
           };
         } catch (error) {
           console.error("Authentication error:", error);
@@ -65,7 +63,6 @@ export const authOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
-        token.apiToken = user.apiToken;
       }
       return token;
     },
@@ -73,7 +70,6 @@ export const authOptions = {
       if (token) {
         session.user.id = token.id;
         session.user.role = token.role;
-        session.apiToken = token.apiToken;
       }
       return session;
     },

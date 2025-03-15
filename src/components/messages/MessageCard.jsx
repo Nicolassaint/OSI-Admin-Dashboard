@@ -25,11 +25,8 @@ export default function MessageCard({
     try {
       setIsDeleting(true);
       
-      // Appel à l'API pour supprimer la conversation
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
-      
-      const response = await fetch(`${apiUrl}/api/conversation/${message.id}?token=${apiToken}`, {
+      // Appel au proxy pour supprimer la conversation
+      const response = await fetch(`/api/proxy/conversations?id=${message.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
@@ -65,10 +62,8 @@ export default function MessageCard({
     setMetricsError(null);
     
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
-      
-      const response = await fetch(`${apiUrl}/api/conversation/${message.id}?token=${apiToken}`);
+      // Utiliser le proxy pour récupérer les métriques RAG
+      const response = await fetch(`/api/proxy/conversations?id=${message.id}`);
       
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
@@ -93,14 +88,17 @@ export default function MessageCard({
   // Fonction pour archiver un message
   const handleArchive = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
-      
-      const response = await fetch(`${apiUrl}/api/conversation/${message.id}/status?token=${apiToken}&status=archive`, {
-        method: 'PUT',
+      // Utiliser le proxy pour mettre à jour le statut
+      const response = await fetch(`/api/proxy/conversations`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          action: 'status',
+          conversationId: message.id,
+          status: 'archive'
+        })
       });
 
       if (!response.ok) {

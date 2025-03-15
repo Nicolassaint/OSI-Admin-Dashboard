@@ -22,11 +22,8 @@ export default function LoginPage() {
   const checkApiHealth = async () => {
     setApiStatus({ isChecking: true, isOnline: true });
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/health`, {
+      const response = await fetch(`/api/proxy/health`, {
         method: "GET",
-        headers: {
-          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
-        },
       });
       
       setApiStatus({ isChecking: false, isOnline: response.ok });

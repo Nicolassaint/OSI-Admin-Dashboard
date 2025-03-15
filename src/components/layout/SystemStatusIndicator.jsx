@@ -9,12 +9,7 @@ export default function SystemStatusIndicator() {
     const fetchSystemStatus = async () => {
       try {
         const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}/system-status`,
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
-            }
-          }
+          `/api/proxy/system-status`
         );
         setStatus(response.data.status);
         setIsLoading(false);

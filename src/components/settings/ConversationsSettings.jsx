@@ -35,6 +35,7 @@ export default function ConversationsSettings() {
   const [deleteError, setDeleteError] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
+  const [exportSuccess, setExportSuccess] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Nouveaux états pour l'importation
@@ -48,8 +49,6 @@ export default function ConversationsSettings() {
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [errorDialogContent, setErrorDialogContent] = useState({ title: "", message: "" });
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-
   const initiateDelete = () => {
     setShowDeleteConfirm(true);
   };
@@ -61,12 +60,11 @@ export default function ConversationsSettings() {
     setShowDeleteConfirm(false);
 
     try {
-      const response = await fetch(`${apiUrl}/api/conversations`, {
+      const response = await fetch(`/api/proxy/conversations/all`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
+          'Accept': 'application/json'
         }
       });
 
@@ -88,14 +86,14 @@ export default function ConversationsSettings() {
   const handleExportConversations = async () => {
     setIsExporting(true);
     setExportError(null);
-
+    setExportSuccess(false);
+    
     try {
-      const response = await fetch(`${apiUrl}/api/conversations`, {
+      const response = await fetch(`/api/proxy/conversations`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
+          'Accept': 'application/json'
         }
       });
 
@@ -152,6 +150,10 @@ export default function ConversationsSettings() {
         URL.revokeObjectURL(url);
       }, 0);
       
+      // Définir le succès et configurer un timeout pour le réinitialiser
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 3000);
+      
     } catch (error) {
       console.error("Erreur lors de l'exportation des conversations:", error);
       setExportError(error.message);
@@ -180,44 +182,67 @@ export default function ConversationsSettings() {
 
   // Fonction pour gérer l'importation de fichier
   const handleFileUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      showDetailedError("Aucun fichier sélectionné", "Veuillez sélectionner un fichier JSON valide.");
+      return;
+    }
 
+    setIsImporting(true);
     setUploadError(null);
     setUploadSuccess(false);
-    setShowImportConfirm(false);
-    setIsImporting(true);
 
     try {
-      // Lire le contenu du fichier
-      const fileContent = await selectedFile.text();
-      
-      // Vérifier que le contenu est un JSON valide
-      let jsonData;
+      // Vérifier que le fichier est un JSON valide
+      let fileContent;
       try {
-        jsonData = JSON.parse(fileContent);
-      } catch (error) {
-        throw new Error("Le fichier sélectionné ne contient pas de JSON valide.");
+        fileContent = await readFileAsText(selectedFile);
+        JSON.parse(fileContent); // Vérifier que c'est un JSON valide
+      } catch (e) {
+        throw new Error("Le fichier n'est pas un JSON valide");
       }
 
-      // Vérifier que les données sont une liste (array)
-      if (!Array.isArray(jsonData)) {
-        throw new Error("Le fichier doit contenir une liste de conversations au format JSON.");
-      }
-
-      // Envoyer le JSON directement à l'API
-      const response = await fetch(`${apiUrl}/api/import_conversations`, {
+      // Envoyer le contenu JSON au serveur
+      const response = await fetch(`/api/proxy/conversations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
+          'Accept': 'application/json'
         },
-        body: JSON.stringify(jsonData)
+        body: fileContent
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        const errorMessage = errorData.detail || errorData.error || `Erreur: ${response.status}`;
+        
+        // Construire un message d'erreur détaillé
+        let errorMessage = "";
+        
+        // Ajouter le message principal
+        if (errorData.detail) {
+          errorMessage += errorData.detail;
+        } else if (errorData.error) {
+          errorMessage += errorData.error;
+        } else {
+          errorMessage += `Erreur: ${response.status}`;
+        }
+        
+        // Ajouter les détails supplémentaires s'ils existent
+        if (errorData.details) {
+          try {
+            // Si details est une chaîne JSON, essayer de la parser
+            const detailsObj = typeof errorData.details === 'string' ? JSON.parse(errorData.details) : errorData.details;
+            if (detailsObj.detail) {
+              errorMessage += `\n\nDétails: ${detailsObj.detail}`;
+            } else {
+              errorMessage += `\n\nDétails: ${JSON.stringify(detailsObj, null, 2)}`;
+            }
+          } catch (e) {
+            // Si ce n'est pas du JSON valide, l'ajouter tel quel
+            errorMessage += `\n\nDétails: ${errorData.details}`;
+          }
+        }
+        
+        console.log("Erreur complète:", errorData);
         
         // Afficher un message court dans l'interface
         setUploadError("Erreur lors de l'importation. Cliquez pour plus de détails.");
@@ -241,6 +266,16 @@ export default function ConversationsSettings() {
       setSelectedFile(null);
       setIsImporting(false);
     }
+  };
+
+  // Fonction pour lire le fichier comme texte
+  const readFileAsText = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e);
+      reader.readAsText(file);
+    });
   };
 
   return (
@@ -332,6 +367,10 @@ export default function ConversationsSettings() {
               <AlertCircle className="mr-1 h-4 w-4 flex-shrink-0 mt-0.5" />
               <span>Erreur lors de la suppression: {deleteError}</span>
             </div>
+          )}
+          
+          {exportSuccess && (
+            <p className="text-sm text-green-600">Conversations exportées avec succès.</p>
           )}
           
           {exportError && (

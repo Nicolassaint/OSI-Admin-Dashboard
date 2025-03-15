@@ -17,11 +17,7 @@ import { Button } from "@/components/ui/button";
 // Fonction pour récupérer les métriques depuis l'API
 async function fetchDashboardMetrics() {
   try {
-    // Utilisation des variables d'environnement pour l'API
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
-    
-    const response = await fetch(`${apiUrl}/api/dashboard-metrics?token=${apiToken}`, {
+    const response = await fetch(`/api/proxy/dashboard-metrics`, {
       headers: {
         'Content-Type': 'application/json'
       },
@@ -33,7 +29,6 @@ async function fetchDashboardMetrics() {
     }
     
     const data = await response.json();
-    // console.log("Données métriques reçues:", data);
     
     // Formatage des données pour l'affichage avec vérification des valeurs undefined
     return {
@@ -91,10 +86,9 @@ export default function DashboardPage() {
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 3;
     
-    const connectWebSocket = () => {
+    const connectWebSocket = async () => {
       // Éviter les connexions multiples
       if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
-        // console.log('Connexion WebSocket déjà établie ou en cours d\'établissement');
         return;
       }
       
@@ -106,17 +100,18 @@ export default function DashboardPage() {
         return;
       }
       
-      // console.log('Création d\'une nouvelle connexion WebSocket pour les métriques');
-      
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-        const wsUrl = apiUrl.replace('http', 'ws');
-        const wsToken = process.env.NEXT_PUBLIC_WEBSOCKET_TOKEN;
+        // Récupérer l'URL WebSocket depuis notre proxy
+        const wsResponse = await fetch('/api/proxy/ws');
+        if (!wsResponse.ok) {
+          throw new Error('Impossible de récupérer l\'URL WebSocket');
+        }
         
-        ws = new WebSocket(`${wsUrl}/ws?token=${wsToken}`);
+        const { wsUrl } = await wsResponse.json();
+        
+        ws = new WebSocket(wsUrl);
         
         ws.onopen = () => {
-          // console.log('WebSocket connecté pour les métriques');
           reconnectAttempts = 0; // Réinitialiser le compteur après une connexion réussie
           setWsConnected(true);
           setMetricsError(null);
