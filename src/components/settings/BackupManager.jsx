@@ -58,17 +58,33 @@ export default function BackupManager() {
       }
 
       const data = await response.json();
-      setBackups(data);
-      setTotalBackups(data.length);
-      setFilteredBackups(data || []);
-      toast.success("Sauvegardes récupérées", {
-        description: data.message
-      });
+      console.log("Données reçues de l'API:", data); // Log pour déboguer
+      
+      // S'assurer que backups est un tableau
+      const backupsArray = Array.isArray(data.backups) ? data.backups : [];
+      setBackups(backupsArray);
+      setTotalBackups(backupsArray.length);
+      setFilteredBackups(backupsArray);
+      
+      if (backupsArray.length > 0) {
+        toast.success("Sauvegardes récupérées", {
+          description: data.message || `${backupsArray.length} sauvegarde(s) disponible(s)`
+        });
+      } else {
+        toast.info("Aucune sauvegarde", {
+          description: "Aucune sauvegarde n'est disponible"
+        });
+      }
+      
       setCurrentPage(1);
+      setIsLoading(false); // Assurez-vous que isLoading est mis à false
     } catch (error) {
       console.error("Erreur lors de la récupération des sauvegardes:", error);
       setError("Impossible de récupérer les sauvegardes. " + error.message);
       setIsLoading(false);
+      toast.error("Erreur", {
+        description: "Impossible de récupérer les sauvegardes: " + error.message
+      });
     }
   };
 
@@ -82,7 +98,9 @@ export default function BackupManager() {
       setFilteredBackups(backups);
     } else {
       const searchLower = searchTerm.toLowerCase();
-      const filtered = backups.filter(backup => {
+      // S'assurer que backups est un tableau avant de filtrer
+      const backupsArray = Array.isArray(backups) ? backups : [];
+      const filtered = backupsArray.filter(backup => {
         // Formatage de la date de la sauvegarde au même format que l'affichage
         const backupDate = formatDate(backup.date).toLowerCase();
         
@@ -255,11 +273,19 @@ export default function BackupManager() {
   }, []);
 
   // Calcul de la pagination
-  const totalPages = Math.max(1, Math.ceil(filteredBackups.length / (visibleItems || 5)));
-  const paginatedBackups = filteredBackups.slice(
+  const totalPages = Math.max(1, Math.ceil((Array.isArray(filteredBackups) ? filteredBackups.length : 0) / (visibleItems || 5)));
+  const paginatedBackups = Array.isArray(filteredBackups) ? filteredBackups.slice(
     (currentPage - 1) * (visibleItems || 5),
     currentPage * (visibleItems || 5)
-  );
+  ) : [];
+
+  // Ajout d'un log pour déboguer
+  useEffect(() => {
+    console.log("Backups filtrés:", filteredBackups);
+    console.log("Backups paginés:", paginatedBackups);
+    console.log("Page courante:", currentPage, "sur", totalPages);
+    console.log("Éléments visibles:", visibleItems);
+  }, [filteredBackups, paginatedBackups, currentPage, totalPages, visibleItems]);
 
   // Reset la page courante quand les filtres changent
   useEffect(() => {
@@ -292,7 +318,8 @@ export default function BackupManager() {
           </div>
           <Badge variant="outline" className="ml-2">
             {totalBackups} sauvegarde{totalBackups !== 1 ? 's' : ''}
-            {filteredBackups.length !== totalBackups && ` (${filteredBackups.length} filtré${filteredBackups.length !== 1 ? 's' : ''})`}
+            {Array.isArray(filteredBackups) && filteredBackups.length !== totalBackups && 
+              ` (${filteredBackups.length} filtré${filteredBackups.length !== 1 ? 's' : ''})`}
           </Badge>
         </div>
       </CardHeader>
@@ -369,7 +396,7 @@ export default function BackupManager() {
           className="border rounded-md flex-grow overflow-hidden"
           ref={tableContainerRef}
         >
-          <ScrollArea className="h-full">
+          <ScrollArea className="h-full max-h-[500px]">
             <Table>
               <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>
@@ -390,7 +417,7 @@ export default function BackupManager() {
                       </TableCell>
                     </TableRow>
                   ))
-                ) : filteredBackups.length === 0 ? (
+                ) : !Array.isArray(filteredBackups) || filteredBackups.length === 0 ? (
                   <TableRow className="h-[53px]">
                     <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                       <div className="flex flex-col items-center justify-center gap-2">
@@ -411,11 +438,11 @@ export default function BackupManager() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedBackups.map((backup) => (
-                    <TableRow key={backup.name} className="group h-[53px]">
+                  paginatedBackups.map((backup, index) => (
+                    <TableRow key={backup.name || index} className="group h-[53px]">
                       <TableCell className="flex items-center whitespace-nowrap min-w-[120px]">
                         <ClockIcon className="mr-1 sm:mr-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        {formatDate(backup.date)}
+                        {backup && backup.date ? formatDate(backup.date) : "Date inconnue"}
                       </TableCell>
                       <TableCell className="text-right pl-1 sm:pl-4">
                         <div className="flex justify-end gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
