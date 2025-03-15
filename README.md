@@ -35,9 +35,9 @@ Ce projet est un tableau de bord d'administration pour le Chatbot OSI, développ
    ```env
       NEXTAUTH_URL=http://localhost:3000
       NEXTAUTH_SECRET=votre_secret_securise_pour_nextauth
-      NEXT_PUBLIC_API_URL=http://localhost:5000
-      NEXT_PUBLIC_API_TOKEN=osi_dashboard_secret_token_2024
-      NEXT_PUBLIC_WEBSOCKET_TOKEN=osi_dashboard_secret_token_2024
+      API_URL=http://localhost:5000
+      API_TOKEN=osi_dashboard_secret_token_2024
+      WEBSOCKET_TOKEN=osi_dashboard_secret_token_2024
    ```
 1. Lancez le serveur de développement :
    ```bash

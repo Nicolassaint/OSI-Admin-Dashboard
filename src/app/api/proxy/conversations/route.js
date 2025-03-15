@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 
 // GET - Récupérer toutes les conversations
 export async function GET(request) {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
+    const apiUrl = process.env.API_URL;
+    const apiToken = process.env.API_TOKEN;
 
     if (!apiUrl || !apiToken) {
         console.error("API configuration is missing");
@@ -87,8 +87,8 @@ export async function GET(request) {
 
 // POST - Créer une nouvelle conversation ou effectuer une action sur une conversation
 export async function POST(request) {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
+    const apiUrl = process.env.API_URL;
+    const apiToken = process.env.API_TOKEN;
 
     if (!apiUrl || !apiToken) {
         console.error("API configuration is missing");
@@ -98,6 +98,52 @@ export async function POST(request) {
     try {
         const body = await request.json();
         const { action, conversationId, status } = body;
+
+        // Vérifier si c'est une demande d'importation (tableau de conversations)
+        if (Array.isArray(body)) {
+            console.log(`[Proxy] Importing ${body.length} conversations`);
+
+            // Appeler l'API d'importation
+            const url = `${apiUrl}/api/import_conversations?token=${apiToken}`;
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiToken}`
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[Proxy] Failed to import conversations: ${response.status}`, errorText);
+
+                // Essayer de parser le texte d'erreur en JSON
+                let errorDetails = errorText;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorDetails = errorJson;
+                } catch (e) {
+                    // Si ce n'est pas du JSON valide, garder le texte tel quel
+                    console.log("[Proxy] L'erreur n'est pas au format JSON:", e.message);
+                }
+
+                return NextResponse.json({
+                    error: "Failed to import conversations",
+                    status: response.status,
+                    details: errorDetails
+                }, { status: response.status });
+            }
+
+            const data = await response.json();
+            console.log(`[Proxy] Successfully imported conversations`);
+            return NextResponse.json({
+                success: true,
+                imported_count: body.length,
+                ...data
+            }, { status: 201 });
+        }
 
         let url = `${apiUrl}/api/conversations`;
         let method = "POST";
@@ -156,10 +202,10 @@ export async function POST(request) {
     }
 }
 
-// DELETE - Supprimer une conversation
+// DELETE - Supprimer une conversation ou toutes les conversations
 export async function DELETE(request) {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
+    const apiUrl = process.env.API_URL;
+    const apiToken = process.env.API_TOKEN;
 
     if (!apiUrl || !apiToken) {
         console.error("API configuration is missing");
@@ -167,6 +213,38 @@ export async function DELETE(request) {
     }
 
     try {
+        const { pathname } = new URL(request.url);
+
+        // Vérifier si c'est une demande de suppression de toutes les conversations
+        if (pathname.endsWith('/all')) {
+            console.log(`[Proxy] Tentative de suppression de toutes les conversations`);
+
+            const url = `${apiUrl}/api/conversations?token=${apiToken}`;
+            console.log(`[Proxy] DELETE all conversations: ${url}`);
+
+            const response = await fetch(url, {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiToken}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[Proxy] Failed to delete all conversations: ${response.status}`, errorText);
+                return NextResponse.json({
+                    error: "Failed to delete all conversations",
+                    status: response.status,
+                    details: errorText
+                }, { status: response.status });
+            }
+
+            console.log(`[Proxy] Successfully deleted all conversations`);
+            return NextResponse.json({ success: true }, { status: 200 });
+        }
+
+        // Sinon, c'est une suppression d'une conversation spécifique
         const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');
 

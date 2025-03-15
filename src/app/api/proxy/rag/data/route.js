@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 
 // GET - Récupérer toutes les données ou une entrée spécifique
 export async function GET(request) {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
+    const apiUrl = process.env.API_URL;
+    const apiToken = process.env.API_TOKEN;
 
     if (!apiUrl || !apiToken) {
         return NextResponse.json({ error: "API configuration is missing" }, { status: 500 });
@@ -107,12 +107,15 @@ export async function PUT(request) {
     }
 
     try {
-        const body = await request.json();
-        const { id } = body;
+        // Récupérer l'ID à partir des paramètres de requête
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
 
         if (!id) {
             return NextResponse.json({ error: "ID is required" }, { status: 400 });
         }
+
+        const body = await request.json();
 
         const response = await fetch(`${apiUrl}/api/rag/data/${encodeURIComponent(id)}`, {
             method: "PUT",
@@ -135,10 +138,10 @@ export async function PUT(request) {
     }
 }
 
-// DELETE - Supprimer une entrée
+// DELETE - Supprimer une entrée    
 export async function DELETE(request) {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
+    const apiUrl = process.env.API_URL;
+    const apiToken = process.env.API_TOKEN;
 
     if (!apiUrl || !apiToken) {
         return NextResponse.json({ error: "API configuration is missing" }, { status: 500 });

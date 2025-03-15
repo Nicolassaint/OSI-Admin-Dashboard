@@ -95,10 +95,7 @@ export default function MessagesPage() {
       }
       
       // Afficher des informations de débogage dans la console
-      console.debug("Variables d'environnement (masquées):", {
-        API_URL: process.env.NEXT_PUBLIC_API_URL ? "défini" : "non défini",
-        API_TOKEN: process.env.NEXT_PUBLIC_API_TOKEN ? "défini" : "non défini"
-      });
+      console.debug("Tentative de connexion à l'API via le proxy échouée");
       
       // Ne pas définir de messages par défaut en cas d'erreur
       // setMessages([]);
@@ -147,139 +144,162 @@ export default function MessagesPage() {
       // console.log('Création d\'une nouvelle connexion WebSocket');
       
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-        const wsUrl = apiUrl.replace('http', 'ws');
-        const wsToken = process.env.NEXT_PUBLIC_WEBSOCKET_TOKEN;
-        
-        ws = new WebSocket(`${wsUrl}/ws?token=${wsToken}`);
-        
-        ws.onopen = () => {
-          // console.log('WebSocket connecté');
-          reconnectAttempts = 0; // Réinitialiser le compteur après une connexion réussie
-          setWsConnected(true);
-          setError(null); // Effacer les erreurs précédentes
-        };
-        
-        ws.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data);
-            
-            switch (message.type) {
-              case 'update_conversation':
-                if (message.data) {
-                  setMessages(prevMessages => {
-                    return prevMessages.map(msg => {
-                      if (msg.id === message.data.id) {
-                        return {
-                          ...msg,
-                          status: message.data.status || msg.status,
-                          evaluation: message.data.evaluation?.rating === 1 ? 1 :
-                                     message.data.evaluation?.rating === 0 ? 0 : null
-                        };
-                      }
-                      return msg;
-                    });
-                  });
-                }
-                break;
-                
-              case 'evaluation_update':
-                if (message.data) {
-                  setMessages(prevMessages => {
-                    return prevMessages.map(msg => {
-                      if (msg.id === message.data.id) {
-                        // Déterminer le nouveau statut en fonction de l'évaluation
-                        // Une évaluation positive (1) marque comme résolu, une évaluation négative (0) reste en attente
-                        const newStatus = message.data.evaluation?.rating === 1 ? 'resolu' : 'en_attente';
-                        
-                        return {
-                          ...msg,
-                          status: newStatus,
-                          evaluation: message.data.evaluation?.rating === 1 ? 1 :
-                                     message.data.evaluation?.rating === 0 ? 0 : null
-                        };
-                      }
-                      return msg;
-                    });
-                  });
-                }
-                break;
-                
-              case 'new_conversation':
-                if (message.data) {
-                  const data = message.data;
-                  
-                  if (!data || (!data.id && !data._id)) {
-                    console.error("Données WebSocket invalides:", data);
-                    return;
-                  }
-                  
-                  // Déterminer le statut en fonction de l'évaluation
-                  const status = data.evaluation?.rating === 1 ? 'resolu' : 'en_attente';
-                  
-                  const formattedMessage = {
-                    id: data.id || data._id,
-                    user: "Utilisateur",
-                    message: data.user_message || "",
-                    response: data.response || "",
-                    timestamp: data.timestamp || new Date().toISOString(),
-                    status: data.status || status,
-                    evaluation: data.evaluation?.rating === 1 ? 1 : 
-                               data.evaluation?.rating === 0 ? 0 : null,
-                    video: data.video,
-                    image: data.image,
-                    buttons: data.buttons || []
-                  };
-                  
-                  setMessages(prevMessages => {
-                    const exists = prevMessages.some(msg => msg.id === formattedMessage.id);
-                    if (exists) {
-                      return prevMessages.map(msg => 
-                        msg.id === formattedMessage.id ? formattedMessage : msg
-                      );
-                    } else {
-                      return [formattedMessage, ...prevMessages];
-                    }
-                  });
-                }
-                break;
-                
-              case 'metrics_update':
-                // Gérer la mise à jour des métriques si nécessaire
-                break;
+        // Utiliser le proxy pour obtenir l'URL WebSocket
+        fetch('/api/proxy/ws')
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`Erreur HTTP: ${response.status}`);
             }
-          } catch (err) {
-            console.error("Erreur lors du traitement du message WebSocket:", err);
-          }
-        };
-        
-        ws.onerror = (error) => {
-          console.error('Erreur WebSocket:', error);
-          setWsConnected(false);
-        };
-        
-        ws.onclose = () => {
-          // console.log('WebSocket déconnecté');
-          setWsConnected(false);
-          
-          // Tentative de reconnexion avec délai exponentiel
-          if (reconnectAttempts < maxReconnectAttempts) {
+            return response.json();
+          })
+          .then(data => {
+            if (!data.wsUrl) {
+              throw new Error('URL WebSocket non disponible');
+            }
+            
+            ws = new WebSocket(data.wsUrl);
+            
+            ws.onopen = () => {
+              // console.log('WebSocket connecté');
+              reconnectAttempts = 0; // Réinitialiser le compteur après une connexion réussie
+              setWsConnected(true);
+              setError(null); // Effacer les erreurs précédentes
+            };
+            
+            ws.onmessage = (event) => {
+              try {
+                const message = JSON.parse(event.data);
+                
+                switch (message.type) {
+                  case 'update_conversation':
+                    if (message.data) {
+                      setMessages(prevMessages => {
+                        return prevMessages.map(msg => {
+                          if (msg.id === message.data.id) {
+                            return {
+                              ...msg,
+                              status: message.data.status || msg.status,
+                              evaluation: message.data.evaluation?.rating === 1 ? 1 :
+                                         message.data.evaluation?.rating === 0 ? 0 : null
+                            };
+                          }
+                          return msg;
+                        });
+                      });
+                    }
+                    break;
+                    
+                  case 'evaluation_update':
+                    if (message.data) {
+                      setMessages(prevMessages => {
+                        return prevMessages.map(msg => {
+                          if (msg.id === message.data.id) {
+                            // Déterminer le nouveau statut en fonction de l'évaluation
+                            // Une évaluation positive (1) marque comme résolu, une évaluation négative (0) reste en attente
+                            const newStatus = message.data.evaluation?.rating === 1 ? 'resolu' : 'en_attente';
+                            
+                            return {
+                              ...msg,
+                              status: newStatus,
+                              evaluation: message.data.evaluation?.rating === 1 ? 1 :
+                                         message.data.evaluation?.rating === 0 ? 0 : null
+                            };
+                          }
+                          return msg;
+                        });
+                      });
+                    }
+                    break;
+                    
+                  case 'new_conversation':
+                    if (message.data) {
+                      const data = message.data;
+                      
+                      if (!data || (!data.id && !data._id)) {
+                        console.error("Données WebSocket invalides:", data);
+                        return;
+                      }
+                      
+                      // Déterminer le statut en fonction de l'évaluation
+                      const status = data.evaluation?.rating === 1 ? 'resolu' : 'en_attente';
+                      
+                      const formattedMessage = {
+                        id: data.id || data._id,
+                        user: "Utilisateur",
+                        message: data.user_message || "",
+                        response: data.response || "",
+                        timestamp: data.timestamp || new Date().toISOString(),
+                        status: data.status || status,
+                        evaluation: data.evaluation?.rating === 1 ? 1 : 
+                                   data.evaluation?.rating === 0 ? 0 : null,
+                        video: data.video,
+                        image: data.image,
+                        buttons: data.buttons || []
+                      };
+                      
+                      setMessages(prevMessages => {
+                        const exists = prevMessages.some(msg => msg.id === formattedMessage.id);
+                        if (exists) {
+                          return prevMessages.map(msg => 
+                            msg.id === formattedMessage.id ? formattedMessage : msg
+                          );
+                        } else {
+                          return [formattedMessage, ...prevMessages];
+                        }
+                      });
+                    }
+                    break;
+                    
+                  case 'metrics_update':
+                    // Gérer la mise à jour des métriques si nécessaire
+                    break;
+                }
+              } catch (err) {
+                console.error("Erreur lors du traitement du message WebSocket:", err);
+              }
+            };
+            
+            ws.onerror = (error) => {
+              console.error('Erreur WebSocket:', error);
+              setWsConnected(false);
+            };
+            
+            ws.onclose = () => {
+              // console.log('WebSocket déconnecté');
+              setWsConnected(false);
+              
+              // Tentative de reconnexion avec délai exponentiel
+              if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Délai exponentiel plafonné à 30s
+                
+                // console.log(`Tentative de reconnexion WebSocket dans ${delay/1000} secondes (tentative ${reconnectAttempts}/${maxReconnectAttempts})`);
+                
+                reconnectTimeout = setTimeout(() => {
+                  connectWebSocket();
+                }, delay);
+              } else {
+                setError("Le serveur de messages n'est pas joignable. Veuillez vérifier que le backend est en cours d'exécution.");
+              }
+            };
+          })
+          .catch(err => {
+            console.error('Erreur lors de la récupération de l\'URL WebSocket:', err);
+            setError("Impossible de se connecter au serveur de messages. Veuillez réessayer plus tard.");
+            setWsConnected(false);
+            
+            // Planifier une tentative de reconnexion
             reconnectAttempts++;
-            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Délai exponentiel plafonné à 30s
-            
-            // console.log(`Tentative de reconnexion WebSocket dans ${delay/1000} secondes (tentative ${reconnectAttempts}/${maxReconnectAttempts})`);
-            
-            reconnectTimeout = setTimeout(() => {
-              connectWebSocket();
-            }, delay);
-          } else {
-            setError("Le serveur de messages n'est pas joignable. Veuillez vérifier que le backend est en cours d'exécution.");
-          }
-        };
-      } catch (error) {
-        console.error("Erreur lors de la création du WebSocket:", error);
-        setError("Impossible de se connecter au serveur de messages");
+            reconnectTimeout = setTimeout(connectWebSocket, 5000);
+          });
+      } catch (err) {
+        console.error('Erreur lors de la création de la connexion WebSocket:', err);
+        setError("Impossible de se connecter au serveur de messages. Veuillez réessayer plus tard.");
         setWsConnected(false);
+        
+        // Planifier une tentative de reconnexion
+        reconnectAttempts++;
+        reconnectTimeout = setTimeout(connectWebSocket, 5000);
       }
     };
     

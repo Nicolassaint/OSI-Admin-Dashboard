@@ -14,10 +14,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const checkApiConnection = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-        const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
-        
-        const response = await fetch(`${apiUrl}/health?token=${apiToken}`, {
+        const response = await fetch(`/api/proxy/health`, {
           signal: AbortSignal.timeout(10000)
         });
 

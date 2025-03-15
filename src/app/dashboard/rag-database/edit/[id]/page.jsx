@@ -115,7 +115,6 @@ export default function EditRagEntryPage({ params }) {
       setSaving(true);
       setSaveError(null);
       
-      const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
       const isUpdate = !isNewEntry;
       
       // Formater les données pour correspondre exactement au format attendu par le backend
@@ -144,12 +143,10 @@ export default function EditRagEntryPage({ params }) {
         }
       };
 
-      // console.log('Données envoyées à l"API:', JSON.stringify(formattedData, null, 2));
-
-      // Correction de l'URL pour la création et la mise à jour
+      // Utiliser le proxy API pour la création et la mise à jour
       const apiUrl = isUpdate 
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/rag/data/${encodeURIComponent(entry.id)}?token=${apiToken}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/rag/data?token=${apiToken}`; // URL corrigée pour POST
+        ? `/api/proxy/rag/data?id=${encodeURIComponent(entry.id)}`
+        : `/api/proxy/rag/data`;
       
       const response = await fetch(apiUrl, {
         method: isUpdate ? 'PUT' : 'POST',
@@ -167,7 +164,7 @@ export default function EditRagEntryPage({ params }) {
       
       // Synchroniser les données RAG après la modification
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/sync?token=${apiToken}`, {
+        await fetch(`/api/proxy/rag/sync`, {
           method: 'POST',
           signal: AbortSignal.timeout(5000)
         });
