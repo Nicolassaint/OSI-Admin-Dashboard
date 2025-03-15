@@ -62,8 +62,8 @@ export default function MessageCard({
     setMetricsError(null);
     
     try {
-      // Utiliser le proxy pour récupérer les métriques RAG
-      const response = await fetch(`/api/proxy/conversations?id=${message.id}`);
+      // Utiliser le bon endpoint pour récupérer une conversation spécifique
+      const response = await fetch(`/api/proxy/conversations/${message.id}`);
       
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
