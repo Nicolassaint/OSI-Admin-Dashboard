@@ -48,11 +48,8 @@ export default function BackupManager() {
     setError(null);
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/backup`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
-        }
+      const response = await fetch(`/api/proxy/rag/backup`, {
+        method: 'GET'
       });
 
       if (!response.ok) {
@@ -61,17 +58,16 @@ export default function BackupManager() {
       }
 
       const data = await response.json();
-      setBackups(data.backups || []);
-      setTotalBackups(data.backups.length);
-      setFilteredBackups(data.backups || []);
+      setBackups(data);
+      setTotalBackups(data.length);
+      setFilteredBackups(data || []);
       toast.success("Sauvegardes récupérées", {
         description: data.message
       });
       setCurrentPage(1);
     } catch (error) {
       console.error("Erreur lors de la récupération des sauvegardes:", error);
-      setError(error.message);
-    } finally {
+      setError("Impossible de récupérer les sauvegardes. " + error.message);
       setIsLoading(false);
     }
   };
@@ -113,15 +109,11 @@ export default function BackupManager() {
 
   const handleCreateBackup = async () => {
     setIsCreating(true);
-    setCreateError(null);
-    setShowCreateConfirm(false);
+    setError(null);
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/backup`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
-        }
+      const response = await fetch(`/api/proxy/rag/backup`, {
+        method: 'POST'
       });
 
       if (!response.ok) {
@@ -129,19 +121,24 @@ export default function BackupManager() {
         throw new Error(errorData.detail || `Erreur: ${response.status}`);
       }
 
-      toast.success("Sauvegarde créée", {
-        description: "La sauvegarde a été créée avec succès"
+      const data = await response.json();
+      toast({
+        title: "Sauvegarde créée",
+        description: `La sauvegarde a été créée avec succès: ${data.filename}`,
       });
-
+      
       fetchBackups();
     } catch (error) {
       console.error("Erreur lors de la création de la sauvegarde:", error);
-      setCreateError(error.message);
-      toast.error("Erreur", {
-        description: `Échec de la création: ${error.message}`
+      setError("Impossible de créer la sauvegarde. " + error.message);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de créer la sauvegarde. " + error.message,
       });
     } finally {
       setIsCreating(false);
+      setShowCreateConfirm(false);
     }
   };
 
@@ -151,20 +148,16 @@ export default function BackupManager() {
   };
 
   const handleRestoreBackup = async () => {
-    if (!selectedBackup) return;
-    
     setIsRestoring(true);
-    setShowRestoreConfirm(false);
-    setRestoreSuccess(false);
+    setError(null);
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/backup/restore`, {
+      const response = await fetch(`/api/proxy/rag/backup/restore`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ backupFile: selectedBackup.name })
+        body: JSON.stringify({ filename: selectedBackup.name })
       });
 
       if (!response.ok) {
@@ -172,25 +165,21 @@ export default function BackupManager() {
         throw new Error(errorData.detail || `Erreur: ${response.status}`);
       }
 
-      setRestoreSuccess(true);
-      toast.success("Restauration réussie", {
-        description: "La sauvegarde a été restaurée avec succès"
+      toast({
+        title: "Restauration réussie",
+        description: `La sauvegarde ${selectedBackup.name} a été restaurée avec succès.`,
       });
-      
-      setTimeout(() => {
-        setRestoreSuccess(false);
-      }, 5000);
-
-      fetchBackups();
     } catch (error) {
       console.error("Erreur lors de la restauration:", error);
-      setError(error.message);
-      toast.error("Erreur", {
-        description: `Échec de la restauration: ${error.message}`
+      setError("Impossible de restaurer la sauvegarde. " + error.message);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de restaurer la sauvegarde. " + error.message,
       });
     } finally {
       setIsRestoring(false);
-      setSelectedBackup(null);
+      setShowRestoreConfirm(false);
     }
   };
 
@@ -207,11 +196,8 @@ export default function BackupManager() {
     setDeleteError(null);
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/backup?filename=${selectedBackup.name}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
-        }
+      const response = await fetch(`/api/proxy/rag/backup?filename=${selectedBackup.name}`, {
+        method: 'DELETE'
       });
 
       if (!response.ok) {
@@ -279,6 +265,20 @@ export default function BackupManager() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
+
+  const handleDownloadBackup = async (backup) => {
+    try {
+      // Utiliser le proxy pour télécharger la sauvegarde
+      window.location.href = `/api/proxy/rag/backup?filename=${backup.name}`;
+    } catch (error) {
+      console.error("Erreur lors du téléchargement:", error);
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de télécharger la sauvegarde.",
+      });
+    }
+  };
 
   return (
     <Card className="w-full h-full flex flex-col">

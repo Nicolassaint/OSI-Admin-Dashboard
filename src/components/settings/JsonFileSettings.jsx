@@ -58,10 +58,9 @@ export default function JsonFileSettings() {
       }
 
       // Envoyer le contenu JSON au serveur
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/data`, {
+      const response = await fetch(`/api/proxy/rag/data`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`,
           'Content-Type': 'application/json'
         },
         body: fileContent
@@ -88,10 +87,10 @@ export default function JsonFileSettings() {
     setExportError(null);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/data`, {
+      const response = await fetch(`/api/proxy/rag/data`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
+          'Content-Type': 'application/json'
         }
       });
 
@@ -147,10 +146,10 @@ export default function JsonFileSettings() {
     setShowDeleteConfirm(false);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/delete`, {
+      const response = await fetch(`/api/proxy/rag/data`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
+          'Content-Type': 'application/json'
         }
       });
 

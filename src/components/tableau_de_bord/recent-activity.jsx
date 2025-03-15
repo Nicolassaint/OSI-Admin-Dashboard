@@ -3,8 +3,40 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
+// Fonction pour normaliser les timestamps
+const normalizeTimestamp = (timestamp) => {
+  if (!timestamp) return new Date();
+  
+  // Si c'est déjà un objet Date
+  if (timestamp instanceof Date) return timestamp;
+  
+  // Si c'est un nombre (timestamp en millisecondes)
+  if (typeof timestamp === 'number') return new Date(timestamp);
+  
+  // Si c'est une chaîne de caractères
+  if (typeof timestamp === 'string') {
+    // Essayer de parser la date
+    const date = new Date(timestamp);
+    if (!isNaN(date.getTime())) return date;
+    
+    // Si c'est un timestamp en secondes (10 chiffres)
+    if (/^\d{10}$/.test(timestamp)) {
+      return new Date(parseInt(timestamp) * 1000);
+    }
+    
+    // Si c'est un timestamp en millisecondes (13 chiffres)
+    if (/^\d{13}$/.test(timestamp)) {
+      return new Date(parseInt(timestamp));
+    }
+  }
+  
+  // Par défaut, retourner la date actuelle
+  console.error("Format de date non reconnu:", timestamp);
+  return new Date();
+};
+
 export function RecentActivity() {
-  const [recentMessages, setRecentMessages] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -12,10 +44,8 @@ export function RecentActivity() {
     const fetchRecentMessages = async () => {
       try {
         setLoading(true);
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-        const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
         
-        const response = await fetch(`${apiUrl}/api/conversations?token=${apiToken}`, {
+        const response = await fetch(`/api/proxy/conversations?limit=3`, {
           headers: {
             'Content-Type': 'application/json'
           },
@@ -28,56 +58,101 @@ export function RecentActivity() {
         
         const data = await response.json();
         
-        // Trier par date et prendre les 3 plus récents
-        const sortedMessages = data
-          .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        // Formater les données pour l'affichage
+        const formattedMessages = Array.isArray(data) 
+          ? data.map(conv => ({
+              id: conv.id || conv._id,
+              user: "Utilisateur",
+              message: conv.user_message 
+                ? conv.user_message.substring(0, 100) + (conv.user_message.length > 100 ? "..." : "") 
+                : (conv.messages && conv.messages.length > 0 
+                  ? conv.messages[0].content.substring(0, 100) + (conv.messages[0].content.length > 100 ? "..." : "") 
+                  : "Message vide"),
+              timestamp: conv.created_at || conv.timestamp || new Date().toISOString(),
+              status: conv.status || "completed"
+            }))
+          : data.conversations && Array.isArray(data.conversations)
+            ? data.conversations.map(conv => ({
+                id: conv.id || conv._id,
+                user: "Utilisateur",
+                message: conv.user_message 
+                  ? conv.user_message.substring(0, 100) + (conv.user_message.length > 100 ? "..." : "") 
+                  : (conv.messages && conv.messages.length > 0 
+                    ? conv.messages[0].content.substring(0, 100) + (conv.messages[0].content.length > 100 ? "..." : "") 
+                    : "Message vide"),
+                timestamp: conv.created_at || conv.timestamp || new Date().toISOString(),
+                status: conv.status || "completed"
+              }))
+            : [];
+        
+        // Limiter à 3 messages et s'assurer qu'ils sont triés par date (les plus récents d'abord)
+        const sortedMessages = formattedMessages
+          .sort((a, b) => {
+            const dateA = normalizeTimestamp(a.timestamp);
+            const dateB = normalizeTimestamp(b.timestamp);
+            return dateB - dateA;
+          })
           .slice(0, 3);
         
-        setRecentMessages(sortedMessages);
-      } catch (err) {
-        console.error("Erreur lors de la récupération des messages récents:", err);
-        // Vérifier si l'erreur est liée à un problème de connexion
-        if (err.name === 'AbortError' || err.name === 'TypeError' || err.message.includes('Failed to fetch')) {
-          setError("Le backend n'est pas joignable. Veuillez vérifier votre connexion.");
-        } else {
-          setError("Impossible de charger les messages récents.");
-        }
-      } finally {
+        setMessages(sortedMessages);
+        setLoading(false);
+      } catch (error) {
+        console.error('Erreur lors de la récupération des messages récents:', error);
+        setError("Impossible de charger les messages récents");
         setLoading(false);
       }
     };
-
-    // Connexion WebSocket pour les mises à jour en temps réel
-    let ws = null;
     
-    const connectWebSocket = () => {
+    fetchRecentMessages();
+    
+    // Configurer WebSocket pour les mises à jour en temps réel
+    const connectWebSocket = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-        const wsUrl = apiUrl.replace('http', 'ws');
-        const wsToken = process.env.NEXT_PUBLIC_WEBSOCKET_TOKEN;
+        // Récupérer l'URL WebSocket depuis notre proxy
+        const wsResponse = await fetch('/api/proxy/ws');
+        if (!wsResponse.ok) {
+          throw new Error('Impossible de récupérer l\'URL WebSocket');
+        }
         
-        ws = new WebSocket(`${wsUrl}/ws?token=${wsToken}`);
+        const { wsUrl } = await wsResponse.json();
+        
+        const ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          console.log('WebSocket connecté pour les activités récentes');
+        };
         
         ws.onmessage = (event) => {
           try {
             const message = JSON.parse(event.data);
             
+            // Vérifier si c'est un message de type 'new_conversation'
             if (message.type === 'new_conversation' && message.data) {
-              setRecentMessages(prevMessages => {
-                // Vérifier si le message existe déjà
+              // Ajouter le nouveau message au début de la liste
+              setMessages(prevMessages => {
                 const messageId = message.data.id || message.data._id;
-                const messageExists = prevMessages.some(
-                  msg => (msg.id || msg._id) === messageId
-                );
                 
-                // Si le message existe déjà, ne pas le rajouter
+                // Vérifier si le message existe déjà dans la liste
+                const messageExists = prevMessages.some(msg => msg.id === messageId);
                 if (messageExists) {
+                  // Si le message existe déjà, ne pas le rajouter
                   return prevMessages;
                 }
                 
-                // Sinon, ajouter le nouveau message
-                const newMessages = [message.data, ...prevMessages].slice(0, 3);
-                return newMessages;
+                const newMessage = {
+                  id: messageId,
+                  user: "Utilisateur",
+                  message: message.data.user_message 
+                    ? message.data.user_message.substring(0, 100) + (message.data.user_message.length > 100 ? "..." : "") 
+                    : (message.data.messages && message.data.messages.length > 0 
+                      ? message.data.messages[0].content.substring(0, 100) + (message.data.messages[0].content.length > 100 ? "..." : "") 
+                      : "Message vide"),
+                  timestamp: message.data.created_at || message.data.timestamp || new Date().toISOString(),
+                  status: message.data.status || "completed"
+                };
+                
+                // Ajouter au début et limiter à 3 éléments
+                return [newMessage, ...prevMessages].slice(0, 3);
               });
             }
           } catch (err) {
@@ -86,28 +161,46 @@ export function RecentActivity() {
         };
         
         ws.onerror = (error) => {
-          console.error('Erreur WebSocket pour les conversations:', error);
+          console.error('Erreur WebSocket pour les activités récentes:', error);
         };
+        
+        return ws;
       } catch (error) {
-        console.error("Erreur lors de la création du WebSocket pour les conversations:", error);
+        console.error("Erreur lors de la connexion WebSocket:", error);
+        return null;
       }
     };
-
-    fetchRecentMessages();
-    connectWebSocket();
-
+    
+    const wsPromise = connectWebSocket();
+    
     return () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
+      // Nettoyer la connexion WebSocket lors du démontage
+      wsPromise.then(ws => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.close();
+        }
+      });
     };
   }, []);
 
   const formatTimeAgo = (timestamp) => {
     try {
-      return formatDistanceToNow(new Date(timestamp), { addSuffix: true, locale: fr });
+      if (!timestamp) return "date inconnue";
+      
+      // Normaliser le timestamp
+      const date = normalizeTimestamp(timestamp);
+      
+      // Calculer la différence en secondes
+      const diffInSeconds = Math.floor((new Date() - date) / 1000);
+      
+      // Si moins de 60 secondes, afficher "À l'instant"
+      if (diffInSeconds < 60) {
+        return "À l'instant";
+      }
+      
+      return formatDistanceToNow(date, { addSuffix: true, locale: fr });
     } catch (error) {
-      console.error("Erreur de formatage de date:", error);
+      console.error("Erreur de formatage de date:", error, "pour timestamp:", timestamp);
       return "date inconnue";
     }
   };
@@ -126,13 +219,13 @@ export function RecentActivity() {
             <p className="text-sm text-muted-foreground">Chargement des interactions récentes...</p>
           ) : error ? (
             <p className="text-sm text-red-500">{error}</p>
-          ) : recentMessages.length === 0 ? (
+          ) : messages.length === 0 ? (
             <p className="text-sm text-muted-foreground">Aucune interaction récente</p>
           ) : (
-            recentMessages.map((message) => (
-              <div key={message.id || message._id} className="flex items-start gap-4 rounded-lg border p-3">
+            messages.map((message) => (
+              <div key={`message-${message.id}`} className="flex items-start gap-4 rounded-lg border p-3">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium truncate max-w-[300px]">{message.user_message}</p>
+                  <p className="text-sm font-medium truncate max-w-[300px]">{message.message}</p>
                   <p className="text-sm text-muted-foreground">
                     {formatTimeAgo(message.timestamp)}
                   </p>

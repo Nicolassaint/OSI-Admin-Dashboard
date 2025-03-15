@@ -32,6 +32,40 @@ const fetchWithAuth = async (endpoint) => {
     }
 };
 
+// Gestionnaire de route GET pour les métriques
+export async function GET(request) {
+    try {
+        // Récupérer les paramètres de la requête
+        const { searchParams } = new URL(request.url);
+        const period = searchParams.get('period') || 'daily';
+        const startDate = searchParams.get('start_date');
+        const endDate = searchParams.get('end_date');
+
+        // Construire l'URL pour l'API backend
+        let apiUrl = `/api/timeseries-metrics?period=${period}`;
+
+        if (startDate) {
+            apiUrl += `&start_date=${encodeURIComponent(startDate)}`;
+        }
+
+        if (endDate) {
+            apiUrl += `&end_date=${encodeURIComponent(endDate)}`;
+        }
+
+        // Appeler l'API backend
+        const data = await fetchWithAuth(apiUrl);
+
+        // Retourner les données
+        return Response.json(data);
+    } catch (error) {
+        console.error("Erreur lors de la récupération des métriques:", error);
+        return Response.json(
+            { error: error.message || "Une erreur est survenue lors de la récupération des métriques" },
+            { status: 500 }
+        );
+    }
+}
+
 export const getTimeseriesMetrics = async (period = 'daily', startDate = null, endDate = null) => {
     let url = `/api/timeseries-metrics?period=${period}`;
 
@@ -44,4 +78,4 @@ export const getTimeseriesMetrics = async (period = 'daily', startDate = null, e
     }
 
     return fetchWithAuth(url);
-};
+}; 

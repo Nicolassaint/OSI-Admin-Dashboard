@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getTimeseriesMetrics } from "@/app/api/metrics/route";
+import { getTimeseriesMetrics } from "@/app/api/proxy/metrics/route";
 import { DatePickerWithRange } from "@/components/ui/date-picker-with-range";
 import { format, subDays } from "date-fns";
 import ConversationsChart from "@/components/statistics/ConversationsChart";
@@ -46,7 +46,14 @@ export default function StatisticsPage() {
       const startDate = format(dates.from, 'yyyy-MM-dd');
       const endDate = format(dates.to, 'yyyy-MM-dd');
       
-      const timeseries = await getTimeseriesMetrics(currentTimeRange, startDate, endDate);
+      // Utiliser l'API via le proxy au lieu d'appeler directement getTimeseriesMetrics
+      const response = await fetch(`/api/proxy/metrics?period=${currentTimeRange}&start_date=${startDate}&end_date=${endDate}`);
+      
+      if (!response.ok) {
+        throw new Error(`Erreur API: ${response.status} - ${response.statusText}`);
+      }
+      
+      const timeseries = await response.json();
       
       // Formater les données de timeseries seulement si elles existent
       if (timeseries && timeseries.data) {

@@ -61,12 +61,11 @@ export default function ConversationsSettings() {
     setShowDeleteConfirm(false);
 
     try {
-      const response = await fetch(`${apiUrl}/api/conversations`, {
+      const response = await fetch(`/api/proxy/conversations`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
+          'Accept': 'application/json'
         }
       });
 
@@ -88,14 +87,14 @@ export default function ConversationsSettings() {
   const handleExportConversations = async () => {
     setIsExporting(true);
     setExportError(null);
-
+    setExportSuccess(false);
+    
     try {
-      const response = await fetch(`${apiUrl}/api/conversations`, {
+      const response = await fetch(`/api/proxy/conversations`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
+          'Accept': 'application/json'
         }
       });
 
@@ -180,39 +179,33 @@ export default function ConversationsSettings() {
 
   // Fonction pour gérer l'importation de fichier
   const handleFileUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      showDetailedError("Aucun fichier sélectionné", "Veuillez sélectionner un fichier JSON valide.");
+      return;
+    }
 
-    setUploadError(null);
-    setUploadSuccess(false);
-    setShowImportConfirm(false);
     setIsImporting(true);
+    setImportError(null);
+    setImportSuccess(false);
 
     try {
-      // Lire le contenu du fichier
-      const fileContent = await selectedFile.text();
-      
-      // Vérifier que le contenu est un JSON valide
-      let jsonData;
+      // Vérifier que le fichier est un JSON valide
+      let fileContent;
       try {
-        jsonData = JSON.parse(fileContent);
-      } catch (error) {
-        throw new Error("Le fichier sélectionné ne contient pas de JSON valide.");
+        fileContent = await readFileAsText(selectedFile);
+        JSON.parse(fileContent); // Vérifier que c'est un JSON valide
+      } catch (e) {
+        throw new Error("Le fichier n'est pas un JSON valide");
       }
 
-      // Vérifier que les données sont une liste (array)
-      if (!Array.isArray(jsonData)) {
-        throw new Error("Le fichier doit contenir une liste de conversations au format JSON.");
-      }
-
-      // Envoyer le JSON directement à l'API
-      const response = await fetch(`${apiUrl}/api/import_conversations`, {
+      // Envoyer le contenu JSON au serveur
+      const response = await fetch(`/api/proxy/conversations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`
+          'Accept': 'application/json'
         },
-        body: JSON.stringify(jsonData)
+        body: fileContent
       });
 
       if (!response.ok) {
