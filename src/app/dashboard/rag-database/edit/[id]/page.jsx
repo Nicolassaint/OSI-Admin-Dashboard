@@ -61,9 +61,10 @@ export default function EditRagEntryPage({ params }) {
       setApiError(null);
       
       const decodedId = decodeURIComponent(id);
-      const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/rag/data/${encodeURIComponent(decodedId)}?token=${apiToken}`);
+      const response = await fetch(`/api/proxy/rag/data?id=${encodeURIComponent(decodedId)}`, {
+        signal: AbortSignal.timeout(10000)
+      });
       
       if (!response.ok) {
         throw new Error(`Erreur ${response.status}: ${response.statusText}`);

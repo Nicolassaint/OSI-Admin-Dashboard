@@ -109,6 +109,9 @@ export default function RagDatabasePage() {
       setFilteredData(prevData => prevData.filter(item => item.id !== entryId));
       setTotalEntries(prev => prev - 1);
       
+      // Fermer la boîte de dialogue de confirmation
+      setDeleteConfirmation({ show: false, entryId: null });
+      
       toast({
         title: "Entrée supprimée",
         description: "L'entrée a été supprimée avec succès.",
@@ -249,6 +252,12 @@ export default function RagDatabasePage() {
                     {entry.details?.messages && entry.details.messages.length > 0 && (
                       <div className="mt-4">
                         <MessagePreview message={entry.details.messages[0]} />
+                      </div>
+                    )}
+                    {/* Si les messages sont dans Messages (majuscule) */}
+                    {entry.details?.Messages && entry.details.Messages.length > 0 && !entry.details.messages && (
+                      <div className="mt-4">
+                        <MessagePreview message={entry.details.Messages[0]} />
                       </div>
                     )}
                   </div>

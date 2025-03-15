@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 
 // GET - Récupérer toutes les données ou une entrée spécifique
 export async function GET(request) {
-    const apiUrl = process.env.API_URL;
-    const apiToken = process.env.API_TOKEN;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
 
     if (!apiUrl || !apiToken) {
         return NextResponse.json({ error: "API configuration is missing" }, { status: 500 });
@@ -19,6 +19,9 @@ export async function GET(request) {
             url = `${apiUrl}/api/rag/data/${encodeURIComponent(id)}`;
         }
 
+        // Ajouter le token comme paramètre de requête
+        url += `?token=${apiToken}`;
+
         const response = await fetch(url, {
             method: "GET",
             headers: {
@@ -32,6 +35,28 @@ export async function GET(request) {
         }
 
         const data = await response.json();
+
+        // Formater les données pour correspondre à ce qu'attend le frontend
+        if (!id) {
+            // Si c'est une liste, transformer l'objet en tableau
+            const entries = [];
+            if (data.data && typeof data.data === 'object') {
+                for (const [key, value] of Object.entries(data.data)) {
+                    entries.push({
+                        id: key,
+                        ...value,
+                        // Assurer la compatibilité avec le frontend
+                        details: {
+                            ...value.details,
+                            // Normaliser les messages pour qu'ils soient accessibles via messages (minuscule)
+                            messages: value.details?.Messages || []
+                        }
+                    });
+                }
+            }
+            return NextResponse.json(entries, { status: 200 });
+        }
+
         return NextResponse.json(data, { status: 200 });
     } catch (error) {
         console.error("RAG data proxy error:", error);
@@ -112,8 +137,8 @@ export async function PUT(request) {
 
 // DELETE - Supprimer une entrée
 export async function DELETE(request) {
-    const apiUrl = process.env.API_URL;
-    const apiToken = process.env.API_TOKEN;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const apiToken = process.env.NEXT_PUBLIC_API_TOKEN;
 
     if (!apiUrl || !apiToken) {
         return NextResponse.json({ error: "API configuration is missing" }, { status: 500 });
@@ -127,13 +152,13 @@ export async function DELETE(request) {
             return NextResponse.json({ error: "ID is required" }, { status: 400 });
         }
 
-        const response = await fetch(`${apiUrl}/api/rag/delete`, {
+        // Corriger l'URL pour correspondre à votre backend
+        const response = await fetch(`${apiUrl}/api/rag/data/${encodeURIComponent(id)}?token=${apiToken}`, {
             method: "DELETE",
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${apiToken}`
-            },
-            body: JSON.stringify({ id })
+            }
         });
 
         if (!response.ok) {
