@@ -1,21 +1,29 @@
 import { NextResponse } from 'next/server';
 
-export async function GET(request, context) {
-    const apiUrl = process.env.API_URL;
-    const apiToken = process.env.API_TOKEN;
-    const { id } = context.params;
-
-    if (!apiUrl || !apiToken) {
-        console.error("API configuration is missing");
-        return NextResponse.json({ error: "API configuration is missing" }, { status: 500 });
-    }
-
+export async function GET(request) {
     try {
-        // Utiliser l'endpoint correct pour récupérer une conversation spécifique
-        const url = `${apiUrl}/api/conversation/${id}?token=${apiToken}`;
-        console.log(`[Proxy] GET conversation: ${url}`);
+        const apiUrl = process.env.API_URL;
+        const apiToken = process.env.API_TOKEN;
 
-        const response = await fetch(url, {
+        if (!apiUrl || !apiToken) {
+            console.error("API configuration is missing");
+            return NextResponse.json({ error: "API configuration is missing" }, { status: 500 });
+        }
+
+        // Extraire l'ID de l'URL de la requête
+        const url = new URL(request.url);
+        const pathParts = url.pathname.split('/');
+        const id = pathParts[pathParts.length - 1];
+
+        if (!id) {
+            return NextResponse.json({ error: "Conversation ID is required" }, { status: 400 });
+        }
+
+        // Utiliser l'endpoint correct pour récupérer une conversation spécifique
+        const apiEndpoint = `${apiUrl}/api/conversation/${id}?token=${apiToken}`;
+        console.log(`[Proxy] GET conversation: ${apiEndpoint}`);
+
+        const response = await fetch(apiEndpoint, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
