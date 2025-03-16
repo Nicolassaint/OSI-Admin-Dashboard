@@ -16,7 +16,38 @@ export async function GET(request) {
         const page = searchParams.get('page') || 1;
         const limit = searchParams.get('limit') || 10;
         const search = searchParams.get('search') || '';
+        const id = searchParams.get('id');
 
+        // Si un ID est spécifié, récupérer une conversation spécifique
+        if (id) {
+            const url = `${apiUrl}/api/conversation/${encodeURIComponent(id)}?token=${apiToken}`;
+
+            console.log(`[Proxy] GET conversation by ID: ${url}`);
+
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiToken}`
+                },
+                cache: 'no-store' // S'assurer d'obtenir les données les plus récentes
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[Proxy] Failed to fetch conversation by ID: ${response.status}`, errorText);
+                return NextResponse.json({
+                    error: "Failed to fetch conversation",
+                    status: response.status,
+                    details: errorText
+                }, { status: response.status });
+            }
+
+            const data = await response.json();
+            return NextResponse.json(data, { status: 200 });
+        }
+
+        // Sinon, récupérer toutes les conversations
         let url = `${apiUrl}/api/conversations?page=${page}&limit=${limit}`;
         // Ajouter le token comme paramètre de requête pour la compatibilité
         url += `&token=${apiToken}`;
@@ -33,6 +64,7 @@ export async function GET(request) {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${apiToken}`
             },
+            cache: 'no-store' // S'assurer d'obtenir les données les plus récentes
         });
 
         if (!response.ok) {
@@ -76,12 +108,8 @@ export async function GET(request) {
 
         return NextResponse.json(normalizedData, { status: 200 });
     } catch (error) {
-        console.error("Conversations proxy error:", error);
-        return NextResponse.json({
-            error: "Service unavailable",
-            message: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-        }, { status: 503 });
+        console.error("[Proxy] Error fetching conversations:", error);
+        return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
     }
 }
 
@@ -147,6 +175,8 @@ export async function POST(request) {
 
         let url = `${apiUrl}/api/conversations`;
         let method = "POST";
+        // Créer une copie du corps de la requête que nous pouvons modifier
+        let requestBody = { ...body };
 
         // Si une action spécifique est demandée
         if (action && conversationId) {
@@ -155,10 +185,14 @@ export async function POST(request) {
                 url = `${apiUrl}/api/conversation/${conversationId}/status`;
                 method = "PUT";
                 // Ajouter le statut et le token comme paramètres de requête
-                url += `?status=${status}&token=${apiToken}`;
+                url += `?status=${encodeURIComponent(status)}&token=${apiToken}`;
+
+                // Pour la mise à jour du statut, utiliser un corps vide
+                requestBody = {};
+                console.log(`[Proxy] Mise à jour du statut de la conversation ${conversationId} à ${status}`);
             } else {
                 // Autres actions
-                url = `${apiUrl}/api/conversations/${conversationId}/${action}`;
+                url = `${apiUrl}/api/conversation/${conversationId}/${action}`;
                 // Ajouter le token comme paramètre de requête
                 url += `?token=${apiToken}`;
             }
@@ -168,7 +202,7 @@ export async function POST(request) {
         }
 
         console.log(`[Proxy] ${method} conversation: ${url}`);
-        console.log(`[Proxy] Request body:`, body);
+        console.log(`[Proxy] Request body:`, requestBody);
 
         const response = await fetch(url, {
             method: method,
@@ -176,7 +210,7 @@ export async function POST(request) {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${apiToken}`
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
@@ -202,7 +236,7 @@ export async function POST(request) {
     }
 }
 
-// DELETE - Supprimer une conversation ou toutes les conversations
+// DELETE - Supprimer une conversation
 export async function DELETE(request) {
     const apiUrl = process.env.API_URL;
     const apiToken = process.env.API_TOKEN;
@@ -213,38 +247,7 @@ export async function DELETE(request) {
     }
 
     try {
-        const { pathname } = new URL(request.url);
-
-        // Vérifier si c'est une demande de suppression de toutes les conversations
-        if (pathname.endsWith('/all')) {
-            console.log(`[Proxy] Tentative de suppression de toutes les conversations`);
-
-            const url = `${apiUrl}/api/conversations?token=${apiToken}`;
-            console.log(`[Proxy] DELETE all conversations: ${url}`);
-
-            const response = await fetch(url, {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${apiToken}`
-                }
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error(`[Proxy] Failed to delete all conversations: ${response.status}`, errorText);
-                return NextResponse.json({
-                    error: "Failed to delete all conversations",
-                    status: response.status,
-                    details: errorText
-                }, { status: response.status });
-            }
-
-            console.log(`[Proxy] Successfully deleted all conversations`);
-            return NextResponse.json({ success: true }, { status: 200 });
-        }
-
-        // Sinon, c'est une suppression d'une conversation spécifique
+        // Récupérer l'ID de la conversation à supprimer
         const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');
 
@@ -255,7 +258,7 @@ export async function DELETE(request) {
 
         console.log(`[Proxy] Tentative de suppression de la conversation avec l'ID: ${id}`);
 
-        // Utiliser directement le format singulier qui correspond à la route backend
+        // Utiliser le format singulier 'conversation' qui correspond à la route backend
         const url = `${apiUrl}/api/conversation/${id}?token=${apiToken}`;
         console.log(`[Proxy] DELETE conversation: ${url}`);
 
@@ -269,21 +272,21 @@ export async function DELETE(request) {
 
         console.log(`[Proxy] Réponse reçue: ${response.status} ${response.statusText}`);
 
+        // Si l'erreur est 404, on peut renvoyer un message de succès
+        // car la conversation n'existe pas ou a déjà été supprimée
+        if (response.status === 404) {
+            console.log(`[Proxy] La conversation avec l'ID ${id} n'existe pas ou a déjà été supprimée`);
+            // Retourner un statut 200 avec un message de succès pour éviter les erreurs côté client
+            return NextResponse.json({
+                success: true,
+                message: "La conversation a été supprimée",
+                status: 200
+            }, { status: 200 });
+        }
+
         if (!response.ok) {
             const errorText = await response.text();
-            console.error(`[Proxy] Failed to delete conversation: ${response.status} ${response.statusText}`, errorText);
-
-            // Si l'erreur est 404, on peut renvoyer un message plus spécifique
-            if (response.status === 404) {
-                console.log(`[Proxy] La conversation avec l'ID ${id} n'existe pas ou a déjà été supprimée`);
-                // Retourner un statut 200 avec un message de succès pour éviter les erreurs côté client
-                return NextResponse.json({
-                    success: true,
-                    message: "La conversation a été supprimée",
-                    status: 200
-                }, { status: 200 });
-            }
-
+            console.error(`[Proxy] Failed to delete conversation: ${response.status}`, errorText);
             return NextResponse.json({
                 error: "Failed to delete conversation",
                 status: response.status,
@@ -300,10 +303,11 @@ export async function DELETE(request) {
         } catch (e) {
             console.log(`[Proxy] La réponse n'est pas au format JSON:`, e.message);
             // Si ce n'est pas du JSON, ce n'est pas grave, on continue
+            responseData = { success: true };
         }
 
         console.log(`[Proxy] Successfully deleted conversation: ${id}`);
-        return NextResponse.json({ success: true }, { status: 200 });
+        return NextResponse.json(responseData || { success: true }, { status: 200 });
     } catch (error) {
         console.error("Conversations proxy error:", error);
         return NextResponse.json({

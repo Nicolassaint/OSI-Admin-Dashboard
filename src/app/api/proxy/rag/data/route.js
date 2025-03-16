@@ -16,6 +16,7 @@ export async function GET(request) {
 
         let url = `${apiUrl}/api/rag/data`;
         if (id) {
+            // Utiliser la route spécifique pour récupérer une entrée par ID
             url = `${apiUrl}/api/rag/data/${encodeURIComponent(id)}`;
         }
 
@@ -28,6 +29,8 @@ export async function GET(request) {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${apiToken}`
             },
+            // Ajouter un cache: 'no-store' pour toujours obtenir les données les plus récentes du backend
+            cache: 'no-store'
         });
 
         if (!response.ok) {
@@ -57,6 +60,8 @@ export async function GET(request) {
             return NextResponse.json(entries, { status: 200 });
         }
 
+        // Pour une entrée spécifique, retourner directement la réponse du backend
+        // avec le format attendu par le frontend
         return NextResponse.json(data, { status: 200 });
     } catch (error) {
         console.error("RAG data proxy error:", error);

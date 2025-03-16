@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,11 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import MessagePreview from "@/components/rag-database/message-preview";
 const ITEMS_PER_PAGE = 5; // Nombre d'entrées à afficher par page
+
+// Cache global pour stocker les données RAG entre les navigations
+let ragDataCache = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 60000; // Durée de validité du cache en millisecondes (1 minute)
 
 export default function RagDatabasePage() {
   const router = useRouter();
@@ -27,9 +32,78 @@ export default function RagDatabasePage() {
   const [deleteConfirmation, setDeleteConfirmation] = useState({ show: false, entryId: null });
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Fonction pour récupérer les données depuis l'API backend
+  const fetchRagData = useCallback(async (forceRefresh = false) => {
+    try {
+      // Vérifier si le cache a été invalidé par la page d'édition
+      if (typeof window !== 'undefined') {
+        const cacheInvalidated = window.localStorage.getItem('ragDataCacheInvalidated');
+        if (cacheInvalidated) {
+          // Supprimer le marqueur d'invalidation
+          window.localStorage.removeItem('ragDataCacheInvalidated');
+          forceRefresh = true;
+        }
+      }
+
+      // Vérifier si nous avons des données en cache et si elles sont encore valides
+      const now = Date.now();
+      if (!forceRefresh && ragDataCache && (now - lastFetchTime < CACHE_DURATION)) {
+        console.log("Utilisation des données en cache");
+        setRagData(ragDataCache);
+        setFilteredData(ragDataCache);
+        setTotalEntries(ragDataCache.length);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setApiError(null);
+      
+      const response = await fetch(`/api/proxy/rag/data`, {
+        signal: AbortSignal.timeout(10000)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Formater les données pour l'affichage
+      const formattedData = Array.isArray(data) ? data : [];
+      
+      // Mettre à jour le cache
+      ragDataCache = formattedData;
+      lastFetchTime = now;
+      
+      setRagData(formattedData);
+      setFilteredData(formattedData);
+      setTotalEntries(formattedData.length);
+      setLoading(false);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des données RAG:', error);
+      setApiError("Impossible de charger les données. Veuillez vérifier que le backend est en cours d'exécution.");
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchRagData();
-  }, []);
+    
+    // Ajouter un écouteur d'événement pour détecter quand l'utilisateur revient sur cette page
+    const handleFocus = () => {
+      // Si le cache est périmé, recharger les données
+      if (Date.now() - lastFetchTime > CACHE_DURATION) {
+        fetchRagData(true);
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchRagData]);
 
   // Effet pour filtrer les données quand le terme de recherche change
   useEffect(() => {
@@ -56,39 +130,9 @@ export default function RagDatabasePage() {
     setCurrentPage(1); // Réinitialiser la pagination lors d'une nouvelle recherche
   }, [searchTerm, ragData]);
 
-  // Fonction pour récupérer les données depuis l'API backend
-  const fetchRagData = async () => {
-    try {
-      setLoading(true);
-      setApiError(null);
-      
-      const response = await fetch(`/api/proxy/rag/data`, {
-        signal: AbortSignal.timeout(10000)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      // Formater les données pour l'affichage
-      const formattedData = Array.isArray(data) ? data : [];
-      
-      setRagData(formattedData);
-      setFilteredData(formattedData);
-      setTotalEntries(formattedData.length);
-      setLoading(false);
-    } catch (error) {
-      console.error('Erreur lors de la récupération des données RAG:', error);
-      setApiError("Impossible de charger les données. Veuillez vérifier que le backend est en cours d'exécution.");
-      setLoading(false);
-    }
-  };
-
   // Fonction pour réessayer le chargement
   const handleRetry = () => {
-    fetchRagData();
+    fetchRagData(true); // Force le rechargement des données
   };
 
   // Fonction pour gérer la suppression
@@ -105,9 +149,14 @@ export default function RagDatabasePage() {
       }
       
       // Mettre à jour l'état local pour refléter la suppression
-      setRagData(prevData => prevData.filter(item => item.id !== entryId));
+      const updatedData = ragData.filter(item => item.id !== entryId);
+      setRagData(updatedData);
       setFilteredData(prevData => prevData.filter(item => item.id !== entryId));
       setTotalEntries(prev => prev - 1);
+      
+      // Mettre à jour le cache
+      ragDataCache = updatedData;
+      lastFetchTime = Date.now();
       
       // Fermer la boîte de dialogue de confirmation
       setDeleteConfirmation({ show: false, entryId: null });

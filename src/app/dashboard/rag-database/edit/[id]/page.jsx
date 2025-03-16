@@ -10,6 +10,11 @@ import { toast } from "sonner";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
+// Référence au cache global défini dans la page principale
+// Cette variable sera undefined dans ce module, mais c'est normal
+// Elle est utilisée uniquement pour indiquer qu'il faut invalider le cache
+let ragDataCache = null;
+
 export default function EditRagEntryPage({ params }) {
   const router = useRouter();
   const id = React.use(params).id;
@@ -59,11 +64,14 @@ export default function EditRagEntryPage({ params }) {
     try {
       setLoading(true);
       setApiError(null);
+      setLoadError(null);
       
       const decodedId = decodeURIComponent(id);
       
+      // Utiliser la route spécifique pour récupérer une entrée par ID
       const response = await fetch(`/api/proxy/rag/data?id=${encodeURIComponent(decodedId)}`, {
-        signal: AbortSignal.timeout(10000)
+        signal: AbortSignal.timeout(10000),
+        cache: 'no-store' // S'assurer d'obtenir les données les plus récentes
       });
       
       if (!response.ok) {
@@ -100,12 +108,12 @@ export default function EditRagEntryPage({ params }) {
           }))
         }
       };
-
+      
       setEntry(formattedEntry);
       setLoading(false);
     } catch (error) {
       console.error("Erreur lors du chargement de l'entrée:", error);
-      setApiError(error.message);
+      setLoadError(`Impossible de charger l'entrée: ${error.message}`);
       setLoading(false);
     }
   };
@@ -115,10 +123,8 @@ export default function EditRagEntryPage({ params }) {
       setSaving(true);
       setSaveError(null);
       
-      const isUpdate = !isNewEntry;
-      
-      // Formater les données pour correspondre exactement au format attendu par le backend
-      const formattedData = {
+      // Convertir les données au format attendu par l'API
+      const apiData = {
         name: entry.name,
         description: entry.description,
         search: entry.search,
@@ -128,56 +134,62 @@ export default function EditRagEntryPage({ params }) {
             Label: message.label,
             Description: message.description,
             Bubbles: message.bubbles.map(bubble => ({
-              Text: bubble.text || "",
-              Image: bubble.image || "",
-              Video: bubble.video || "",
+              Text: bubble.text,
+              Image: bubble.image,
+              Video: bubble.video,
               Order: bubble.order
             })),
-            Buttons: message.buttons ? message.buttons.map(button => ({
+            Buttons: message.buttons.map(button => ({
               Label: button.label,
-              Link: button.link || "",
-              Type: button.type || "link",
+              Link: button.link,
+              Type: button.type,
               Order: button.order
-            })) : []
+            }))
           }))
         }
       };
-
-      // Utiliser le proxy API pour la création et la mise à jour
-      const apiUrl = isUpdate 
-        ? `/api/proxy/rag/data?id=${encodeURIComponent(entry.id)}`
-        : `/api/proxy/rag/data`;
       
-      const response = await fetch(apiUrl, {
-        method: isUpdate ? 'PUT' : 'POST',
+      // Déterminer si c'est une création ou une mise à jour
+      const method = isNewEntry ? 'POST' : 'PUT';
+      const url = isNewEntry 
+        ? `/api/proxy/rag/data` 
+        : `/api/proxy/rag/data?id=${encodeURIComponent(entry.id)}`;
+      
+      const response = await fetch(url, {
+        method,
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formattedData),
-        signal: AbortSignal.timeout(15000)
+        body: JSON.stringify(apiData)
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(Array.isArray(errorData) ? errorData[0]?.msg : errorData.detail || `Erreur ${response.status}: ${response.statusText}`);
+        throw new Error(`Erreur ${response.status}: ${response.statusText}`);
       }
       
-      // Synchroniser les données RAG après la modification
-      try {
-        await fetch(`/api/proxy/rag/sync`, {
-          method: 'POST',
-          signal: AbortSignal.timeout(5000)
-        });
-      } catch (syncError) {
-        console.warn("Avertissement: Impossible de synchroniser les données après la sauvegarde", syncError);
+      // Invalider le cache global pour forcer un rechargement des données
+      // lors du retour à la page principale
+      if (typeof window !== 'undefined') {
+        // Utiliser une approche qui fonctionne même si le cache n'est pas directement accessible
+        window.localStorage.setItem('ragDataCacheInvalidated', Date.now().toString());
       }
       
-      toast.success(isNewEntry ? "Entrée créée avec succès" : "Modifications enregistrées avec succès");
-      router.push("/dashboard/rag-database");
+      toast({
+        title: "Enregistrement réussi",
+        description: "Les modifications ont été enregistrées avec succès.",
+        variant: "default"
+      });
       
+      // Synchroniser la base de données RAG
+      await fetch(`/api/proxy/rag/sync`, {
+        method: 'POST'
+      });
+      
+      // Rediriger vers la page principale
+      router.push('/dashboard/rag-database');
     } catch (error) {
       console.error("Erreur lors de l'enregistrement:", error);
-      setSaveError(error.message || "Une erreur est survenue lors de l'enregistrement");
+      setSaveError(`Impossible d'enregistrer les modifications: ${error.message}`);
     } finally {
       setSaving(false);
       setConfirmSave(false);

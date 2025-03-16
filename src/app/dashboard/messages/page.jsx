@@ -1,11 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import React from "react";
 import { MessageList, MessageFilter, MessageSearch, MessageSort, MessageEvaluationFilter } from "@/components/messages";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+
+// Cache global pour stocker les messages entre les navigations
+let messagesCache = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 60000; // Durée de validité du cache en millisecondes (1 minute)
 
 export default function MessagesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -18,7 +23,26 @@ export default function MessagesPage() {
   const [evaluationFilter, setEvaluationFilter] = useState("all");
 
   // Fonction pour récupérer les conversations
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async (forceRefresh = false) => {
+    // Vérifier si le cache a été invalidé manuellement
+    if (typeof window !== 'undefined') {
+      const cacheInvalidated = window.localStorage.getItem('messagesCacheInvalidated');
+      if (cacheInvalidated) {
+        // Supprimer le marqueur d'invalidation
+        window.localStorage.removeItem('messagesCacheInvalidated');
+        forceRefresh = true;
+      }
+    }
+
+    // Vérifier si nous avons des données en cache et si elles sont encore valides
+    const now = Date.now();
+    if (!forceRefresh && messagesCache && (now - lastFetchTime < CACHE_DURATION)) {
+      console.log("Utilisation des messages en cache");
+      setMessages(messagesCache);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     
@@ -32,7 +56,8 @@ export default function MessagesPage() {
           headers: {
             'Content-Type': 'application/json'
           },
-          signal: AbortSignal.timeout(10000)
+          signal: AbortSignal.timeout(10000),
+          cache: 'no-store' // S'assurer d'obtenir les données les plus récentes
         });
         
         console.log('Réponse reçue:', response.status, response.statusText);
@@ -78,6 +103,10 @@ export default function MessagesPage() {
           };
         }).filter(msg => msg !== null); // Filtrer les éléments null
         
+        // Mettre à jour le cache
+        messagesCache = formattedMessages;
+        lastFetchTime = now;
+        
         setMessages(formattedMessages);
       }
     } catch (err) {
@@ -102,7 +131,7 @@ export default function MessagesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Récupérer les conversations depuis l'API au chargement
   useEffect(() => {
@@ -114,7 +143,23 @@ export default function MessagesPage() {
     
     // Nettoyer le timer si le composant est démonté
     return () => clearTimeout(timer);
-  }, []);
+  }, [fetchConversations]);
+
+  // Ajouter un écouteur d'événement pour détecter quand l'utilisateur revient sur cette page
+  useEffect(() => {
+    const handleFocus = () => {
+      // Si le cache est périmé, recharger les données
+      if (Date.now() - lastFetchTime > CACHE_DURATION) {
+        fetchConversations(true);
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchConversations]);
 
   // Configurer la connexion WebSocket
   useEffect(() => {
@@ -174,7 +219,7 @@ export default function MessagesPage() {
                   case 'update_conversation':
                     if (message.data) {
                       setMessages(prevMessages => {
-                        return prevMessages.map(msg => {
+                        const updatedMessages = prevMessages.map(msg => {
                           if (msg.id === message.data.id) {
                             return {
                               ...msg,
@@ -185,6 +230,12 @@ export default function MessagesPage() {
                           }
                           return msg;
                         });
+                        
+                        // Mettre à jour le cache avec les nouvelles données
+                        messagesCache = updatedMessages;
+                        lastFetchTime = Date.now();
+                        
+                        return updatedMessages;
                       });
                     }
                     break;
@@ -192,7 +243,7 @@ export default function MessagesPage() {
                   case 'evaluation_update':
                     if (message.data) {
                       setMessages(prevMessages => {
-                        return prevMessages.map(msg => {
+                        const updatedMessages = prevMessages.map(msg => {
                           if (msg.id === message.data.id) {
                             // Déterminer le nouveau statut en fonction de l'évaluation
                             // Une évaluation positive (1) marque comme résolu, une évaluation négative (0) reste en attente
@@ -200,122 +251,128 @@ export default function MessagesPage() {
                             
                             return {
                               ...msg,
-                              status: newStatus,
-                              evaluation: message.data.evaluation?.rating === 1 ? 1 :
-                                         message.data.evaluation?.rating === 0 ? 0 : null
+                              evaluation: message.data.evaluation?.rating,
+                              status: newStatus
                             };
                           }
                           return msg;
                         });
+                        
+                        // Mettre à jour le cache avec les nouvelles données
+                        messagesCache = updatedMessages;
+                        lastFetchTime = Date.now();
+                        
+                        return updatedMessages;
                       });
                     }
                     break;
                     
                   case 'new_conversation':
                     if (message.data) {
-                      const data = message.data;
-                      
-                      if (!data || (!data.id && !data._id)) {
-                        console.error("Données WebSocket invalides:", data);
-                        return;
-                      }
-                      
-                      // Déterminer le statut en fonction de l'évaluation
-                      const status = data.evaluation?.rating === 1 ? 'resolu' : 'en_attente';
-                      
-                      const formattedMessage = {
-                        id: data.id || data._id,
-                        user: "Utilisateur",
-                        message: data.user_message || "",
-                        response: data.response || "",
-                        timestamp: data.timestamp || new Date().toISOString(),
-                        status: data.status || status,
-                        evaluation: data.evaluation?.rating === 1 ? 1 : 
-                                   data.evaluation?.rating === 0 ? 0 : null,
-                        video: data.video,
-                        image: data.image,
-                        buttons: data.buttons || []
-                      };
-                      
                       setMessages(prevMessages => {
-                        const exists = prevMessages.some(msg => msg.id === formattedMessage.id);
-                        if (exists) {
-                          return prevMessages.map(msg => 
-                            msg.id === formattedMessage.id ? formattedMessage : msg
-                          );
-                        } else {
-                          return [formattedMessage, ...prevMessages];
-                        }
+                        // Vérifier si la conversation existe déjà
+                        const exists = prevMessages.some(msg => msg.id === message.data.id);
+                        if (exists) return prevMessages;
+                        
+                        // Formater la nouvelle conversation
+                        const newConversation = {
+                          id: message.data.id,
+                          user: "Utilisateur",
+                          message: message.data.user_message || "",
+                          response: message.data.response || "",
+                          timestamp: message.data.timestamp || new Date().toISOString(),
+                          status: message.data.status || 'en_attente',
+                          evaluation: message.data.evaluation?.rating === 1 ? 1 : 
+                                     message.data.evaluation?.rating === 0 ? 0 : null,
+                          video: message.data.video,
+                          image: message.data.image,
+                          buttons: message.data.buttons || []
+                        };
+                        
+                        // Ajouter la nouvelle conversation au début de la liste
+                        const updatedMessages = [newConversation, ...prevMessages];
+                        
+                        // Mettre à jour le cache avec les nouvelles données
+                        messagesCache = updatedMessages;
+                        lastFetchTime = Date.now();
+                        
+                        return updatedMessages;
                       });
                     }
                     break;
                     
-                  case 'metrics_update':
-                    // Gérer la mise à jour des métriques si nécessaire
+                  case 'delete_conversation':
+                    if (message.data && message.data.id) {
+                      setMessages(prevMessages => {
+                        const updatedMessages = prevMessages.filter(msg => msg.id !== message.data.id);
+                        
+                        // Mettre à jour le cache avec les nouvelles données
+                        messagesCache = updatedMessages;
+                        lastFetchTime = Date.now();
+                        
+                        return updatedMessages;
+                      });
+                    }
                     break;
+                    
+                  default:
+                    console.log('Message WebSocket non géré:', message);
                 }
-              } catch (err) {
-                console.error("Erreur lors du traitement du message WebSocket:", err);
+              } catch (error) {
+                console.error('Erreur lors du traitement du message WebSocket:', error);
+              }
+            };
+            
+            ws.onclose = (event) => {
+              console.log(`WebSocket fermé avec le code: ${event.code}`);
+              setWsConnected(false);
+              
+              // Tenter de se reconnecter après un délai, sauf si la fermeture est intentionnelle
+              if (event.code !== 1000) {
+                reconnectAttempts++;
+                const reconnectDelay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+                console.log(`Tentative de reconnexion dans ${reconnectDelay}ms (tentative ${reconnectAttempts}/${maxReconnectAttempts})`);
+                
+                reconnectTimeout = setTimeout(() => {
+                  connectWebSocket();
+                }, reconnectDelay);
               }
             };
             
             ws.onerror = (error) => {
               console.error('Erreur WebSocket:', error);
-              setWsConnected(false);
-            };
-            
-            ws.onclose = () => {
-              // console.log('WebSocket déconnecté');
-              setWsConnected(false);
-              
-              // Tentative de reconnexion avec délai exponentiel
-              if (reconnectAttempts < maxReconnectAttempts) {
-                reconnectAttempts++;
-                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Délai exponentiel plafonné à 30s
-                
-                // console.log(`Tentative de reconnexion WebSocket dans ${delay/1000} secondes (tentative ${reconnectAttempts}/${maxReconnectAttempts})`);
-                
-                reconnectTimeout = setTimeout(() => {
-                  connectWebSocket();
-                }, delay);
-              } else {
-                setError("Le serveur de messages n'est pas joignable. Veuillez vérifier que le backend est en cours d'exécution.");
-              }
+              // La gestion des erreurs est déjà faite dans onclose
             };
           })
-          .catch(err => {
-            console.error('Erreur lors de la récupération de l\'URL WebSocket:', err);
-            setError("Impossible de se connecter au serveur de messages. Veuillez réessayer plus tard.");
-            setWsConnected(false);
+          .catch(error => {
+            console.error('Erreur lors de la récupération de l\'URL WebSocket:', error);
+            setError("Impossible de se connecter au serveur de messages en temps réel.");
             
-            // Planifier une tentative de reconnexion
+            // Tenter de se reconnecter après un délai
             reconnectAttempts++;
-            reconnectTimeout = setTimeout(connectWebSocket, 5000);
+            const reconnectDelay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+            reconnectTimeout = setTimeout(() => {
+              connectWebSocket();
+            }, reconnectDelay);
           });
-      } catch (err) {
-        console.error('Erreur lors de la création de la connexion WebSocket:', err);
-        setError("Impossible de se connecter au serveur de messages. Veuillez réessayer plus tard.");
-        setWsConnected(false);
-        
-        // Planifier une tentative de reconnexion
-        reconnectAttempts++;
-        reconnectTimeout = setTimeout(connectWebSocket, 5000);
+      } catch (error) {
+        console.error('Erreur lors de la création de la connexion WebSocket:', error);
       }
     };
     
+    // Établir la connexion WebSocket
     connectWebSocket();
     
     // Nettoyer la connexion WebSocket lors du démontage du composant
     return () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        // console.log('Fermeture de la connexion WebSocket');
-        ws.close();
+      if (ws) {
+        ws.close(1000, "Composant démonté");
       }
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }
     };
-  }, []); // Dépendance vide pour n'exécuter qu'une seule fois
+  }, []);
 
   // Modifier la fonction de filtrage pour inclure le tri
   const filteredMessages = useMemo(() => {
@@ -366,34 +423,46 @@ export default function MessagesPage() {
     });
   }, [messages, filter, searchTerm, sortOrder, evaluationFilter]);
 
-  // Mettre à jour la fonction markAsResolved pour utiliser le proxy
+  // Fonction pour réessayer le chargement
+  const handleRetry = () => {
+    fetchConversations(true); // Force le rechargement des données
+  };
+
+  // Fonction pour mettre à jour le statut d'un message
   const updateMessageStatus = async (id, status) => {
     try {
-      const response = await fetch(`/api/proxy/conversations`, {
-        method: 'POST',
+      const response = await fetch(`/api/proxy/conversations/${id}/status`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          action: 'status',
-          conversationId: id,
-          status: status
-        })
+        body: JSON.stringify({ status })
       });
-
+      
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
       }
-
-      // Mettre à jour l'état local en attendant la mise à jour via WebSocket
-      setMessages(prevMessages => 
-        prevMessages.map(msg => 
-          msg.id === id ? { ...msg, status } : msg
-        )
-      );
+      
+      // Mettre à jour l'état local
+      setMessages(prevMessages => {
+        const updatedMessages = prevMessages.map(msg => {
+          if (msg.id === id) {
+            return { ...msg, status };
+          }
+          return msg;
+        });
+        
+        // Mettre à jour le cache avec les nouvelles données
+        messagesCache = updatedMessages;
+        lastFetchTime = Date.now();
+        
+        return updatedMessages;
+      });
+      
+      return true;
     } catch (error) {
-      console.error("Erreur lors de la mise à jour du status:", error);
-      setError("Impossible de mettre à jour le status du message");
+      console.error(`Erreur lors de la mise à jour du statut du message ${id}:`, error);
+      return false;
     }
   };
 
@@ -401,37 +470,32 @@ export default function MessagesPage() {
   const markAsResolved = (id, newStatus = 'resolu') => updateMessageStatus(id, newStatus);
   const archiveMessage = (id) => updateMessageStatus(id, 'archive');
 
-  // Supprimer un message en utilisant le proxy
+  // Fonction pour supprimer un message
   const deleteMessage = async (id) => {
     try {
-      console.log(`Tentative de suppression du message avec l'ID: ${id}`);
-      
-      // Supprimer le message de l'interface immédiatement pour une meilleure expérience utilisateur
-      setMessages(prevMessages => prevMessages.filter(message => message.id !== id));
-      
-      // Envoyer la requête de suppression au backend
-      const response = await fetch(`/api/proxy/conversations?id=${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      const response = await fetch(`/api/proxy/conversations/${id}`, {
+        method: 'DELETE'
       });
       
-      console.log(`Réponse de suppression reçue:`, response.status, response.statusText);
-      
-      // Si la requête échoue avec une erreur autre que 404, afficher un message d'erreur
-      if (!response.ok && response.status !== 404) {
-        const errorText = await response.text().catch(() => "Aucun détail disponible");
-        console.error(`Erreur HTTP lors de la suppression: ${response.status} - ${response.statusText}. Détails:`, errorText);
-        throw new Error(`Erreur HTTP: ${response.status} - ${response.statusText}`);
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
       }
       
-      console.log(`Message avec l'ID ${id} supprimé avec succès`);
+      // Mettre à jour l'état local
+      setMessages(prevMessages => {
+        const updatedMessages = prevMessages.filter(msg => msg.id !== id);
+        
+        // Mettre à jour le cache avec les nouvelles données
+        messagesCache = updatedMessages;
+        lastFetchTime = Date.now();
+        
+        return updatedMessages;
+      });
       
+      return true;
     } catch (error) {
-      console.error("Erreur lors de la suppression du message:", error);
-      // Ne pas afficher d'erreur à l'utilisateur car le message a déjà été supprimé de l'interface
-      // setError(`Impossible de supprimer le message: ${error.message}`);
+      console.error(`Erreur lors de la suppression du message ${id}:`, error);
+      return false;
     }
   };
 
@@ -457,7 +521,7 @@ export default function MessagesPage() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={fetchConversations}
+                onClick={handleRetry}
                 disabled={loading}
               >
                 Réessayer

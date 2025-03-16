@@ -116,13 +116,6 @@ export default function MessageList({
                   Archiver
                 </Button>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onDelete(message.id)}
-              >
-                Supprimer
-              </Button>
             </div>
           </MessageCard>
         ))}

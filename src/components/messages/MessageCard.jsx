@@ -25,23 +25,37 @@ export default function MessageCard({
     try {
       setIsDeleting(true);
       
-      // Appel au proxy pour supprimer la conversation
-      const response = await fetch(`/api/proxy/conversations?id=${message.id}`, {
+      // Utiliser la route dédiée pour supprimer la conversation
+      const response = await fetch(`/api/proxy/conversations/${message.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
         }
       });
       
+      const responseData = await response.json().catch(() => ({ success: false }));
+      
+      // Considérer 404 comme un succès (la conversation n'existe pas ou a déjà été supprimée)
+      // Ou si la réponse contient success: true
+      if (response.status === 200 || responseData.success === true) {
+        console.log(`Conversation avec l'ID ${message.id} supprimée avec succès`);
+        // Appeler onDelete pour mettre à jour l'interface
+        onDelete(message.id);
+        return;
+      }
+      
       if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
+        // Extraire les détails de l'erreur
+        const errorDetails = responseData.error || responseData.details || 'Erreur inconnue';
+        throw new Error(`Erreur (${response.status}): ${errorDetails}`);
       }
       
       // Si la suppression a réussi, appeler la fonction onDelete
       onDelete(message.id);
     } catch (error) {
       console.error("Erreur lors de la suppression de la conversation:", error);
-      // Vous pourriez ajouter ici une notification d'erreur
+      // Afficher une notification d'erreur
+      alert(`Erreur lors de la suppression: ${error.message}`);
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -62,8 +76,11 @@ export default function MessageCard({
     setMetricsError(null);
     
     try {
-      // Utiliser le bon endpoint pour récupérer une conversation spécifique
-      const response = await fetch(`/api/proxy/conversations/${message.id}`);
+      // Utiliser la route standard pour récupérer les données de la conversation
+      console.log(`Récupération des métriques pour la conversation ${message.id}`);
+      const response = await fetch(`/api/proxy/conversations/${message.id}`, {
+        cache: 'no-store' // S'assurer d'obtenir les données les plus récentes
+      });
       
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
@@ -71,8 +88,12 @@ export default function MessageCard({
       
       const data = await response.json();
       
-      if (data.rag_metrics) {
-        setRagMetrics(data.rag_metrics);
+      // Vérifier les différentes structures possibles de la réponse
+      if (data && (data.rag_metrics || data.metrics)) {
+        setRagMetrics(data.rag_metrics || data.metrics);
+      } else if (data && data.data && (data.data.rag_metrics || data.data.metrics)) {
+        // Certains backends peuvent encapsuler les données dans un objet 'data'
+        setRagMetrics(data.data.rag_metrics || data.data.metrics);
       } else {
         setMetricsError("Aucune métrique RAG disponible pour cette conversation.");
       }
@@ -88,27 +109,42 @@ export default function MessageCard({
   // Fonction pour archiver un message
   const handleArchive = async () => {
     try {
-      // Utiliser le proxy pour mettre à jour le statut
-      const response = await fetch(`/api/proxy/conversations`, {
-        method: 'POST',
+      // Utiliser la même route et méthode que updateMessageStatus
+      const response = await fetch(`/api/proxy/conversations/${message.id}/status`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          action: 'status',
-          conversationId: message.id,
-          status: 'archive'
-        })
+        body: JSON.stringify({ status: 'archive' })
       });
 
       if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`Erreur HTTP: ${response.status}`, errorText);
+        
+        // Essayer de parser le texte d'erreur en JSON
+        let errorDetails = errorText;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorDetails = errorJson.detail || errorJson.error || errorText;
+        } catch (e) {
+          // Si ce n'est pas du JSON valide, garder le texte tel quel
+        }
+        
+        throw new Error(`Erreur (${response.status}): ${errorDetails}`);
       }
 
-      // La mise à jour se fera via WebSocket
+      // Informer l'utilisateur que l'action a réussi
+      console.log(`Conversation ${message.id} archivée avec succès`);
+      // Mettre à jour l'interface utilisateur si nécessaire
+      // Si onMarkAsResolved est disponible, l'utiliser pour mettre à jour le statut localement
+      if (typeof onMarkAsResolved === 'function') {
+        onMarkAsResolved(message.id, 'archive');
+      }
     } catch (error) {
       console.error("Erreur lors de l'archivage:", error);
-      // Vous pourriez ajouter ici une notification d'erreur
+      // Afficher une notification d'erreur à l'utilisateur
+      alert(`Erreur lors de l'archivage: ${error.message}`);
     }
   };
 
