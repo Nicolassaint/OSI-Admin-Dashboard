@@ -11,6 +11,7 @@ export default function MessageList({
   onMarkAsResolved, 
   onDelete, 
   onArchive,
+  onEditHover
 }) {
   const ITEMS_PER_PAGE = 5; // Nombre de messages par page
   const [currentPage, setCurrentPage] = useState(1);
@@ -95,6 +96,7 @@ export default function MessageList({
             onDelete={onDelete}
             onArchive={onArchive}
             formatDate={formatDate}
+            onEditHover={onEditHover}
           >
             <div className="flex space-x-2">
               {message.status !== 'resolu' && message.status !== 'archive' && (

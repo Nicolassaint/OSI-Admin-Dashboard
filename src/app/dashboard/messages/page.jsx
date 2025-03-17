@@ -14,6 +14,10 @@ let lastFetchTime = 0;
 // La durée du cache est de 5 minutes car les mises à jour sont gérées par WebSocket
 const CACHE_DURATION = 300000; // 5 minutes en millisecondes
 
+// Cache pour les détails des messages
+const messageDetailsCache = new Map();
+const CACHE_DURATION_DETAILS = 300000; // 5 minutes
+
 export default function MessagesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
@@ -313,6 +317,57 @@ export default function MessagesPage() {
     };
   }, []);
 
+  // Fonction de préchargement des données
+  const preloadMessageData = useCallback(async (id) => {
+    if (!id) return;
+    
+    // Vérifier si les données sont déjà en cache
+    const cachedData = messageDetailsCache.get(id);
+    if (cachedData && (Date.now() - cachedData.timestamp < CACHE_DURATION_DETAILS)) {
+      return cachedData.data;
+    }
+    
+    try {
+      const response = await fetch(`/api/proxy/conversations/${id}`, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        cache: 'force-cache',
+        next: { revalidate: 300 }
+      });
+      
+      if (!response.ok) return null;
+      
+      const data = await response.json();
+      // Stocker les données préchargées dans le cache
+      messageDetailsCache.set(id, {
+        data,
+        timestamp: Date.now()
+      });
+      
+      return data;
+    } catch (error) {
+      console.error('Erreur de préchargement:', error);
+      return null;
+    }
+  }, []);
+
+  // Fonction pour nettoyer le cache des détails
+  const cleanupDetailsCache = useCallback(() => {
+    const now = Date.now();
+    for (const [id, cache] of messageDetailsCache.entries()) {
+      if (now - cache.timestamp > CACHE_DURATION_DETAILS) {
+        messageDetailsCache.delete(id);
+      }
+    }
+  }, []);
+
+  // Nettoyer le cache périodiquement
+  useEffect(() => {
+    const cleanupInterval = setInterval(cleanupDetailsCache, 60000); // Nettoyer toutes les minutes
+    return () => clearInterval(cleanupInterval);
+  }, [cleanupDetailsCache]);
+
   // Modifier la fonction de filtrage pour inclure le tri
   const filteredMessages = useMemo(() => {
     let result = [...messages];
@@ -507,10 +562,11 @@ export default function MessagesPage() {
           <MessageList
             messages={filteredMessages}
             loading={loading}
-            error={null} // On gère l'erreur au-dessus maintenant
+            error={null}
             onMarkAsResolved={markAsResolved}
             onDelete={deleteMessage}
             onArchive={archiveMessage}
+            onEditHover={preloadMessageData}
           />
         </CardContent>
       </Card>

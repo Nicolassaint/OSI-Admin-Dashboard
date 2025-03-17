@@ -8,7 +8,8 @@ export default function MessageCard({
   message, 
   onMarkAsResolved, 
   onDelete, 
-  formatDate 
+  formatDate,
+  onEditHover
 }) {
   // État pour gérer l'ouverture de la boîte de dialogue de confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -140,6 +141,13 @@ export default function MessageCard({
     }
   }, [message.id, message.rag_metrics, metricsCache]);
 
+  // Précharger les données au survol du bouton d'édition
+  const handleEditHover = useCallback(() => {
+    if (onEditHover) {
+      onEditHover(message.id);
+    }
+  }, [message.id, onEditHover]);
+
   // Fonction pour archiver un message
   const handleArchive = async (e) => {
     // Empêcher la propagation de l'événement
@@ -210,6 +218,7 @@ export default function MessageCard({
             variant="outline"
             size="sm"
             onClick={handleArchive}
+            onMouseEnter={handleEditHover}
             title="Archiver la conversation"
             disabled={isArchiving}
           >
@@ -219,6 +228,7 @@ export default function MessageCard({
             variant="outline"
             size="sm"
             onClick={() => setShowDeleteConfirm(true)}
+            onMouseEnter={handleEditHover}
             title="Supprimer la conversation"
           >
             <TrashIcon className="h-4 w-4" />
