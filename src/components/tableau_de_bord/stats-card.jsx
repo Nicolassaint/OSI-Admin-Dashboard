@@ -15,7 +15,8 @@ export function StatCard({ name, value, icon: Icon }) {
 
   // Fonction pour séparer la valeur en caractères individuels
   const splitValue = (val) => {
-    return val.toString().split('');
+    // Utiliser un regex pour séparer les caractères tout en préservant les espaces
+    return val.toString().match(/\s|[^\s]/g) || [];
   };
 
   const prevChars = splitValue(prevValue);
