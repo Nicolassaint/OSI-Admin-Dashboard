@@ -11,6 +11,9 @@ export default function MessageCard({
   formatDate,
   onEditHover
 }) {
+  // Ajouter des logs pour le débogage
+  // console.log('MessageCard received message:', JSON.stringify(message, null, 2));
+
   // État pour gérer l'ouverture de la boîte de dialogue de confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   // État pour gérer le chargement pendant la suppression
@@ -199,7 +202,7 @@ export default function MessageCard({
     <div className="border rounded-lg p-4 space-y-3">
       <div className="flex justify-between items-start">
         <div>
-          <p className="font-medium">{message.user}</p>
+          <p className="font-medium">{message.user || "Utilisateur"}</p>
           <p className="text-sm text-muted-foreground">
             {formatDate(message.timestamp)}
           </p>
@@ -238,13 +241,13 @@ export default function MessageCard({
       
       <div>
         <p className="font-medium text-sm">Question:</p>
-        <p className="text-sm">{message.message}</p>
+        <p className="text-sm">{message.message || message.user_message || message.question || "Aucune question"}</p>
       </div>
       
       <div>
         <p className="font-medium text-sm">Réponse:</p>
         <p className="text-sm">
-          {message.response || "Pas encore de réponse"}
+          {message.response || message.answer || "Pas encore de réponse"}
         </p>
       </div>
       

@@ -26,117 +26,84 @@ export default function MessagesPage() {
   const [error, setError] = useState(null);
   const [sortOrder, setSortOrder] = useState("desc");
   const [wsConnected, setWsConnected] = useState(false);
-  const [evaluationFilter, setEvaluationFilter] = useState("all");
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10
+  });
 
-  // Fonction pour récupérer les conversations
-  const fetchConversations = useCallback(async (forceRefresh = false) => {
-    // Vérifier si le cache a été invalidé manuellement
-    if (typeof window !== 'undefined') {
-      const cacheInvalidated = window.localStorage.getItem('messagesCacheInvalidated');
-      if (cacheInvalidated) {
-        window.localStorage.removeItem('messagesCacheInvalidated');
-        forceRefresh = true;
-      }
-    }
-
-    // Vérifier si nous avons des données en cache et si elles sont encore valides
-    const now = Date.now();
-    if (!forceRefresh && messagesCache && (now - lastFetchTime < CACHE_DURATION)) {
-      // console.log("Utilisation des messages en cache");
-      setMessages(messagesCache);
-      setLoading(false);
-      return;
-    }
-
+  // Fonction pour récupérer les conversations avec pagination
+  const fetchConversations = useCallback(async (page = 1, forceRefresh = false) => {
     setLoading(true);
     setError(null);
     
     try {
-      if (typeof window !== 'undefined') {
-        const response = await fetch(`/api/proxy/conversations`, {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          signal: AbortSignal.timeout(10000),
-          // Utiliser le cache du navigateur si disponible
-          cache: 'force-cache',
-          next: { revalidate: 300 } // Revalider toutes les 5 minutes
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => "Aucun détail disponible");
-          throw new Error(`Erreur HTTP: ${response.status} - ${response.statusText}. Détails: ${errorText}`);
-        }
-        
-        const responseData = await response.json();
-        let conversationsArray = responseData;
-        
-        if (responseData.data && Array.isArray(responseData.data)) {
-          conversationsArray = responseData.data;
-        } else if (!Array.isArray(responseData)) {
-          throw new Error("Format de données inattendu");
-        }
-        
-        const formattedMessages = conversationsArray.map(conv => {
-          if (!conv) return null;
-          return {
-            id: conv.id || conv._id,
-            user: "Utilisateur",
-            message: conv.user_message || "",
-            response: conv.response || "",
-            timestamp: conv.timestamp || new Date().toISOString(),
-            status: conv.status || (conv.evaluation?.rating === 1 ? 'resolu' : 'en_attente'),
-            evaluation: conv.evaluation?.rating === 1 ? 1 : conv.evaluation?.rating === 0 ? 0 : null,
-            video: conv.video,
-            image: conv.image,
-            buttons: conv.buttons || []
-          };
-        }).filter(msg => msg !== null);
-        
-        // Mettre à jour le cache
-        messagesCache = formattedMessages;
-        lastFetchTime = now;
-        
-        setMessages(formattedMessages);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: pagination.itemsPerPage.toString(),
+        sort: sortOrder,
+        filter: filter
+      });
+
+      if (searchTerm) {
+        params.append('search', searchTerm);
       }
+
+      console.log('Fetching conversations with params:', params.toString());
+
+      const response = await fetch(`/api/proxy/conversations?${params.toString()}`, {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        signal: AbortSignal.timeout(10000),
+        cache: 'no-store'
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "Aucun détail disponible");
+        throw new Error(`Erreur HTTP: ${response.status} - ${response.statusText}. Détails: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      // console.log('Received data:', data);
+      
+      // Mettre à jour les messages et la pagination
+      setMessages(data.conversations);
+      setPagination(data.pagination);
+      
     } catch (err) {
       console.error("Erreur lors de la récupération des conversations:", err);
       
       if (err.name === 'AbortError') {
         setError("La requête a expiré. Le serveur API est peut-être indisponible ou surchargé.");
       } else if (err.name === 'TypeError' || err.message.includes('Failed to fetch')) {
-        setError("Impossible de se connecter au backend. Veuillez vérifier votre connexion réseau et les variables d'environnement API_URL et API_TOKEN.");
-      } else if (err.message.includes('Erreur HTTP')) {
-        setError(`Erreur de l'API: ${err.message}`);
+        setError("Impossible de se connecter au backend. Veuillez vérifier votre connexion réseau.");
       } else {
         setError(`Impossible de charger les messages: ${err.message}`);
       }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [sortOrder, filter, searchTerm, pagination.itemsPerPage]);
 
-  // Récupérer les conversations depuis l'API au chargement
+  // Effet pour recharger les messages quand les filtres changent
   useEffect(() => {
-    // Supprimer le délai inutile
-    fetchConversations();
+    fetchConversations(1, true);
+  }, [fetchConversations, sortOrder, filter, searchTerm]);
+
+  // Gestionnaire de changement de page
+  const handlePageChange = useCallback((newPage) => {
+    fetchConversations(newPage);
   }, [fetchConversations]);
 
-  // Ajouter un écouteur d'événement pour détecter quand l'utilisateur revient sur cette page
-  useEffect(() => {
-    const handleFocus = () => {
-      // Si le cache est périmé, recharger les données
-      if (Date.now() - lastFetchTime > CACHE_DURATION) {
-        fetchConversations(true);
-      }
-    };
-    
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [fetchConversations]);
+  // Optimiser la recherche avec debounce
+  const debouncedSearch = useMemo(
+    () => debounce((value) => {
+      setSearchTerm(value);
+    }, 300),
+    []
+  );
 
   // Configurer la connexion WebSocket
   useEffect(() => {
@@ -368,65 +335,16 @@ export default function MessagesPage() {
     return () => clearInterval(cleanupInterval);
   }, [cleanupDetailsCache]);
 
-  // Modifier la fonction de filtrage pour inclure le tri
-  const filteredMessages = useMemo(() => {
-    let result = [...messages];
-    
-    // Filtrage par statut
-    if (filter !== "all") {
-      result = result.filter((message) => {
-        // S'assurer que le status est bien défini
-        const messageStatus = message.status || 'en_attente';
-        return messageStatus === filter;
-      });
-    }
-    
-    // Filtrage par évaluation
-    if (evaluationFilter !== "all") {
-      switch (evaluationFilter) {
-        case "positive":
-          result = result.filter(message => message.evaluation === 1);
-          break;
-        case "negative":
-          result = result.filter(message => message.evaluation === 0);
-          break;
-        case "no-feedback":
-          result = result.filter(message => message.evaluation === null);
-          break;
-      }
-    }
-    
-    // Filtrage par recherche
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(
-        (message) =>
-          message.message?.toLowerCase().includes(term) ||
-          message.response?.toLowerCase().includes(term) ||
-          message.user?.toLowerCase().includes(term)
-      );
-    }
-    
-    // Tri par date
-    return result.sort((a, b) => {
-      if (sortOrder === "desc") {
-        return new Date(b.timestamp) - new Date(a.timestamp);
-      } else {
-        return new Date(a.timestamp) - new Date(b.timestamp);
-      }
-    });
-  }, [messages, filter, searchTerm, sortOrder, evaluationFilter]);
-
   // Fonction pour réessayer le chargement
   const handleRetry = () => {
-    fetchConversations(true); // Force le rechargement des données
+    fetchConversations(1, true); // Force le rechargement des données
   };
 
   // Optimiser la fonction updateMessageStatus avec debounce
   const updateMessageStatus = useCallback(
     debounce(async (id, status) => {
       try {
-        console.log(`Mise à jour du statut pour ${id} vers ${status}`);
+        // console.log(`Mise à jour du statut pour ${id} vers ${status}`);
         
         // Mettre à jour l'état local immédiatement
         setMessages(prevMessages => {
@@ -526,9 +444,8 @@ export default function MessagesPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
         <div className="flex space-x-2">
-          <MessageSearch searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+          <MessageSearch searchTerm={searchTerm} setSearchTerm={debouncedSearch} />
           <MessageFilter filter={filter} setFilter={setFilter} />
-          <MessageEvaluationFilter evaluationFilter={evaluationFilter} setEvaluationFilter={setEvaluationFilter} />
           <MessageSort sortOrder={sortOrder} setSortOrder={setSortOrder} />
         </div>
       </div>
@@ -556,17 +473,19 @@ export default function MessagesPage() {
       {/* Liste des messages */}
       <Card>
         <CardHeader>
-          <CardTitle>Liste des messages ({filteredMessages.length})</CardTitle>
+          <CardTitle>Liste des messages ({pagination.totalItems})</CardTitle>
         </CardHeader>
         <CardContent>
           <MessageList
-            messages={filteredMessages}
+            messages={messages}
             loading={loading}
             error={null}
             onMarkAsResolved={markAsResolved}
             onDelete={deleteMessage}
             onArchive={archiveMessage}
             onEditHover={preloadMessageData}
+            pagination={pagination}
+            onPageChange={handlePageChange}
           />
         </CardContent>
       </Card>

@@ -13,24 +13,23 @@ export async function GET(request) {
     try {
         // Récupérer les paramètres de requête
         const { searchParams } = new URL(request.url);
-        const page = searchParams.get('page') || 1;
-        const limit = searchParams.get('limit') || 10;
+        const page = parseInt(searchParams.get('page')) || 1;
+        const limit = parseInt(searchParams.get('limit')) || 10;
         const search = searchParams.get('search') || '';
+        const sortOrder = searchParams.get('sort') || 'desc';
+        const status = searchParams.get('filter') || '';
         const id = searchParams.get('id');
 
         // Si un ID est spécifié, récupérer une conversation spécifique
         if (id) {
             const url = `${apiUrl}/api/conversation/${encodeURIComponent(id)}?token=${apiToken}`;
-
-            // console.log(`[Proxy] GET conversation by ID: ${url}`);
-
             const response = await fetch(url, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${apiToken}`
                 },
-                cache: 'no-store' // S'assurer d'obtenir les données les plus récentes
+                cache: 'no-store'
             });
 
             if (!response.ok) {
@@ -47,14 +46,21 @@ export async function GET(request) {
             return NextResponse.json(data, { status: 200 });
         }
 
-        // Sinon, récupérer toutes les conversations
-        let url = `${apiUrl}/api/conversations?page=${page}&limit=${limit}`;
-        // Ajouter le token comme paramètre de requête pour la compatibilité
-        url += `&token=${apiToken}`;
+        // Construire l'URL avec tous les paramètres de filtrage et de tri
+        let url = `${apiUrl}/api/conversations?token=${apiToken}`;
 
-        if (search) {
-            url += `&search=${encodeURIComponent(search)}`;
-        }
+        // Ajouter les paramètres de filtrage
+        const params = new URLSearchParams({
+            page: page.toString(),
+            limit: limit.toString(),
+            sort_by: 'timestamp',
+            sort_order: sortOrder
+        });
+
+        if (search) params.append('search', search);
+        if (status && status !== 'all') params.append('status', status);
+
+        url += `&${params.toString()}`;
 
         // console.log(`[Proxy] GET conversations: ${url}`);
 
@@ -64,7 +70,7 @@ export async function GET(request) {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${apiToken}`
             },
-            cache: 'no-store' // S'assurer d'obtenir les données les plus récentes
+            cache: 'no-store'
         });
 
         if (!response.ok) {
@@ -78,34 +84,34 @@ export async function GET(request) {
         }
 
         const data = await response.json();
-        // console.log(`[Proxy] Successfully fetched ${data.length || (data.data && data.data.length) || 0} conversations`);
-        // console.log(`[Proxy] Sample data:`, data.length > 0 ? data[0] : (data.data && data.data.length > 0 ? data.data[0] : "No data"));
+        // console.log(`[Proxy] Response data:`, JSON.stringify(data, null, 2));
 
-        // Si les données sont vides, renvoyer un tableau vide plutôt qu'un objet vide
-        if (!data || (typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length === 0)) {
-            // console.log("[Proxy] Données vides ou invalides, renvoi d'un tableau vide");
-            return NextResponse.json([], { status: 200 });
-        }
+        // Normaliser la structure de la réponse
+        const normalizedData = {
+            conversations: (data.conversations || []).map(conv => {
+                // console.log(`[Proxy] Processing conversation:`, JSON.stringify(conv, null, 2));
+                return {
+                    id: conv.id || conv._id,
+                    user: "Utilisateur",
+                    message: conv.user_message || conv.message || conv.question || conv.input || conv.text || "", // Ajout de plus de champs possibles
+                    response: conv.response || conv.answer || conv.output || "", // Ajout de plus de champs possibles
+                    timestamp: conv.timestamp || new Date().toISOString(),
+                    status: conv.status || (conv.evaluation?.rating === 1 ? 'resolu' : 'en_attente'),
+                    evaluation: conv.evaluation?.rating === 1 ? 1 : conv.evaluation?.rating === 0 ? 0 : null,
+                    video: conv.video,
+                    image: conv.image,
+                    buttons: conv.buttons || []
+                };
+            }),
+            pagination: {
+                currentPage: data.page || page,
+                totalPages: data.total_pages || Math.ceil((data.total || 0) / limit),
+                totalItems: data.total || 0,
+                itemsPerPage: data.limit || limit
+            }
+        };
 
-        // Normaliser la structure des données pour assurer la compatibilité
-        let normalizedData = data;
-
-        // Si les données sont dans data.data, les extraire
-        if (!Array.isArray(data) && data.data && Array.isArray(data.data)) {
-            normalizedData = data.data;
-        }
-
-        // Si les données sont dans data.conversations, les extraire
-        if (!Array.isArray(data) && data.conversations && Array.isArray(data.conversations)) {
-            normalizedData = data.conversations;
-        }
-
-        // S'assurer que nous renvoyons toujours un tableau
-        if (!Array.isArray(normalizedData)) {
-            // console.log("[Proxy] Les données ne sont pas un tableau, renvoi d'un tableau vide");
-            normalizedData = [];
-        }
-
+        // console.log(`[Proxy] Normalized data:`, JSON.stringify(normalizedData, null, 2));
         return NextResponse.json(normalizedData, { status: 200 });
     } catch (error) {
         console.error("[Proxy] Error fetching conversations:", error);

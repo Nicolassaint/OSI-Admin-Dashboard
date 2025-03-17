@@ -11,41 +11,21 @@ export default function MessageList({
   onMarkAsResolved, 
   onDelete, 
   onArchive,
-  onEditHover
+  onEditHover,
+  pagination,
+  onPageChange
 }) {
-  const ITEMS_PER_PAGE = 5; // Nombre de messages par page
-  const [currentPage, setCurrentPage] = useState(1);
-  
-  // Réinitialiser la page à 1 quand les messages changent
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [messages.length]);
-  
-  // Calculer le nombre total de pages
-  const totalPages = Math.ceil(messages.length / ITEMS_PER_PAGE);
-  
-  // Obtenir les messages pour la page actuelle
-  const paginatedMessages = messages.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
   // Formater la date
   const formatDate = (dateString) => {
     try {
-      // Vérifier si la date est valide
       if (!dateString) return "Date inconnue";
       
-      // Essayer de créer une date directement
       let date = new Date(dateString);
       
-      // Si la date n'est pas valide, essayer de nettoyer le format
       if (isNaN(date.getTime())) {
-        // Essayer de supprimer les microsecondes si présentes
         const cleanDateString = dateString.split('.')[0];
         date = new Date(cleanDateString);
         
-        // Si toujours pas valide, retourner un message d'erreur
         if (isNaN(date.getTime())) {
           console.warn("Date invalide:", dateString);
           return "Date invalide";
@@ -65,6 +45,12 @@ export default function MessageList({
     }
   };
 
+  // Ajouter des logs pour le débogage
+  useEffect(() => {
+    // console.log('MessageList received messages:', messages);
+    console.log('MessageList received pagination:', pagination);
+  }, [messages, pagination]);
+
   if (loading) {
     return (
       <div className="flex justify-center py-8">
@@ -77,7 +63,8 @@ export default function MessageList({
     return <div className="text-center text-red-500 py-4">{error}</div>;
   }
 
-  if (messages.length === 0) {
+  if (!messages || messages.length === 0) {
+    console.log('No messages to display');
     return (
       <p className="text-center text-muted-foreground py-4">
         Aucun message trouvé
@@ -85,10 +72,12 @@ export default function MessageList({
     );
   }
 
+  // console.log('Rendering messages:', messages);
+
   return (
     <div className="space-y-4">
       <div className="space-y-4">
-        {paginatedMessages.map((message) => (
+        {messages.map((message) => (
           <MessageCard
             key={message.id || `message-${Math.random()}`}
             message={message}
@@ -125,9 +114,9 @@ export default function MessageList({
       
       {/* Pagination */}
       <Pagination 
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={setCurrentPage}
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        onPageChange={onPageChange}
       />
     </div>
   );
