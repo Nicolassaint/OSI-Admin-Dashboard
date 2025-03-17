@@ -7,6 +7,7 @@ import MessageButton from "./message-button";
 
 export default function MessagesTab({ entry, setEntry }) {
   const [activeMessageIndex, setActiveMessageIndex] = useState(0);
+  const [isNewEntry, setIsNewEntry] = useState(false);
 
   const addMessage = () => {
     const newMessages = [...entry.details.messages, {
@@ -32,6 +33,7 @@ export default function MessagesTab({ entry, setEntry }) {
     
     // Activer le nouvel onglet de message
     setActiveMessageIndex(newMessages.length - 1);
+    setIsNewEntry(true);
   };
 
   const addBubble = (messageIndex) => {
@@ -200,7 +202,9 @@ export default function MessagesTab({ entry, setEntry }) {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Libellé</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Libellé {isNewEntry && <span className="text-red-500">*</span>}
+                  </label>
                   <input 
                     type="text" 
                     className="w-full p-2 border rounded-md bg-background"
@@ -217,6 +221,9 @@ export default function MessagesTab({ entry, setEntry }) {
                       });
                     }}
                   />
+                  {isNewEntry && !entry.details.messages[activeMessageIndex]?.label && (
+                    <p className="text-sm text-red-500 mt-1">Le libellé du message est obligatoire</p>
+                  )}
                 </div>
                 
                 <div>
@@ -255,24 +262,28 @@ export default function MessagesTab({ entry, setEntry }) {
                   
                   <div className="space-y-4">
                     {entry.details.messages[activeMessageIndex]?.bubbles?.map((bubble, bidx) => (
-                      <MessageBubble 
-                        key={bidx}
-                        bubble={bubble}
-                        onRemove={() => removeBubble(activeMessageIndex, bidx)}
-                        onChange={(updatedBubble) => {
-                          const updatedMessages = [...entry.details.messages];
-                          const updatedBubbles = [...updatedMessages[activeMessageIndex].bubbles];
-                          updatedBubbles[bidx] = updatedBubble;
-                          updatedMessages[activeMessageIndex] = {
-                            ...updatedMessages[activeMessageIndex],
-                            bubbles: updatedBubbles
-                          };
-                          setEntry({
-                            ...entry,
-                            details: {...entry.details, messages: updatedMessages}
-                          });
-                        }}
-                      />
+                      <div key={bidx}>
+                        <MessageBubble 
+                          bubble={bubble}
+                          onRemove={() => removeBubble(activeMessageIndex, bidx)}
+                          onChange={(updatedBubble) => {
+                            const updatedMessages = [...entry.details.messages];
+                            const updatedBubbles = [...updatedMessages[activeMessageIndex].bubbles];
+                            updatedBubbles[bidx] = updatedBubble;
+                            updatedMessages[activeMessageIndex] = {
+                              ...updatedMessages[activeMessageIndex],
+                              bubbles: updatedBubbles
+                            };
+                            setEntry({
+                              ...entry,
+                              details: {...entry.details, messages: updatedMessages}
+                            });
+                          }}
+                        />
+                        {isNewEntry && !bubble.text && (
+                          <p className="text-sm text-red-500 mt-1">Le texte de la bulle est obligatoire</p>
+                        )}
+                      </div>
                     ))}
                     
                     {(!entry.details.messages[activeMessageIndex]?.bubbles || 

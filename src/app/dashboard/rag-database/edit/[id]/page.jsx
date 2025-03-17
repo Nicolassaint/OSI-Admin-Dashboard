@@ -120,6 +120,44 @@ export default function EditRagEntryPage({ params }) {
 
   const handleSave = async () => {
     try {
+      // Validation des champs obligatoires pour une nouvelle entrée
+      if (isNewEntry) {
+        const errors = [];
+        
+        // Vérifier les champs généraux
+        if (!entry.name) errors.push("Le nom est obligatoire");
+        if (!entry.description) errors.push("La description est obligatoire");
+        if (!entry.search) errors.push("Les termes de recherche sont obligatoires");
+        
+        // Vérifier les messages
+        if (!entry.details.messages.length) {
+          errors.push("Au moins un message est obligatoire");
+        } else {
+          entry.details.messages.forEach((message, index) => {
+            if (!message.label) {
+              errors.push(`Le libellé du message ${index + 1} est obligatoire`);
+            }
+            if (!message.bubbles.length) {
+              errors.push(`Le message ${index + 1} doit contenir au moins une bulle`);
+            } else {
+              message.bubbles.forEach((bubble, bubbleIndex) => {
+                if (!bubble.text) {
+                  errors.push(`Le texte de la bulle ${bubbleIndex + 1} du message ${index + 1} est obligatoire`);
+                }
+              });
+            }
+          });
+        }
+        
+        if (errors.length > 0) {
+          setSaveError({
+            title: "Champs obligatoires manquants",
+            messages: errors
+          });
+          return;
+        }
+      }
+      
       setSaving(true);
       setSaveError(null);
       
@@ -274,9 +312,19 @@ export default function EditRagEntryPage({ params }) {
 
           {saveError && (
             <Alert variant="destructive" className="mb-6">
-              <AlertTitle>Erreur lors de l'enregistrement</AlertTitle>
+              <AlertTitle>
+                {typeof saveError === 'object' ? saveError.title : "Erreur lors de l'enregistrement"}
+              </AlertTitle>
               <AlertDescription>
-                <p>{typeof saveError === 'object' ? JSON.stringify(saveError) : saveError}</p>
+                {typeof saveError === 'object' ? (
+                  <ul className="list-disc pl-4">
+                    {saveError.messages.map((message, index) => (
+                      <li key={index}>{message}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>{typeof saveError === 'object' ? JSON.stringify(saveError) : saveError}</p>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -300,13 +348,13 @@ export default function EditRagEntryPage({ params }) {
           
           {activeTab === "general" && (
             <div className="space-y-4">
-              <GeneralInfoTab entry={entry} setEntry={setEntry} />
+              <GeneralInfoTab entry={entry} setEntry={setEntry} isNewEntry={isNewEntry} />
             </div>
           )}
           
           {activeTab === "messages" && (
             <div className="space-y-4">
-              <MessagesTab entry={entry} setEntry={setEntry} />
+              <MessagesTab entry={entry} setEntry={setEntry} isNewEntry={isNewEntry} />
             </div>
           )}
         </>
