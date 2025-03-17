@@ -18,11 +18,72 @@ import {
   Cross2Icon,
 } from "@radix-ui/react-icons";
 import { signOut } from "next-auth/react";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useTheme } from "next-themes";
-import { useState, useEffect } from "react";
-import axios from "axios";
+import { useState } from "react";
 import SystemStatusIndicator from "@/components/layout/SystemStatusIndicator";
+import { getCachedData, setCachedData } from "@/lib/cache";
+
+// Fonction pour précharger les données du tableau de bord
+async function preloadDashboardData() {
+  try {
+    // Vérifier si les données sont déjà en cache
+    const cachedMetrics = getCachedData('metrics');
+    const cachedActivity = getCachedData('recentActivity');
+    
+    if (cachedMetrics && cachedActivity) {
+      return; // Les données sont déjà en cache
+    }
+
+    // Précharger les métriques
+    const metricsResponse = await fetch(`/api/proxy/dashboard-metrics`, {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+    
+    if (metricsResponse.ok) {
+      const metricsData = await metricsResponse.json();
+      const formattedMetrics = {
+        totalMessages: metricsData.total_messages ? metricsData.total_messages.toLocaleString() : "0",
+        responseTime: metricsData.avg_response_time ? metricsData.avg_response_time.toFixed(2) + 's' : "0s",
+        satisfactionRate: metricsData.satisfaction_rate ? metricsData.satisfaction_rate.toFixed(0) + '%' : "Aucun avis",
+        ragItems: metricsData.rag_entries ? metricsData.rag_entries.toLocaleString() : "0"
+      };
+      setCachedData('metrics', formattedMetrics);
+    }
+
+    // Précharger l'activité récente
+    const activityResponse = await fetch(`/api/proxy/conversations?limit=3`, {
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+    
+    if (activityResponse.ok) {
+      const activityData = await activityResponse.json();
+      const formattedActivity = Array.isArray(activityData) 
+        ? activityData.map(conv => ({
+            id: conv.id || conv._id,
+            user: "Utilisateur",
+            message: conv.user_message 
+              ? conv.user_message.substring(0, 100) + (conv.user_message.length > 100 ? "..." : "") 
+              : (conv.messages && conv.messages.length > 0 
+                ? conv.messages[0].content.substring(0, 100) + (conv.messages[0].content.length > 100 ? "..." : "") 
+                : "Message vide"),
+            timestamp: conv.created_at || conv.timestamp || new Date().toISOString(),
+            status: conv.status || "completed"
+          }))
+        : [];
+      
+      setCachedData('recentActivity', formattedActivity);
+    }
+  } catch (error) {
+    console.error('Erreur lors du préchargement des données:', error);
+  }
+}
 
 // Ajout du composant de chargement avec logo rotatif
 function LoadingSpinner() {
@@ -47,6 +108,13 @@ export default function DashboardLayout({ children }) {
   const { data: session, status } = useSession();
   const { theme, setTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Précharger les données du tableau de bord dès que l'utilisateur est authentifié
+  useEffect(() => {
+    if (status === "authenticated") {
+      preloadDashboardData();
+    }
+  }, [status]);
 
   useEffect(() => {
     // Synchroniser le thème avec la classe du document

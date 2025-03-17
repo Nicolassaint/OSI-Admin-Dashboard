@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import { getCachedData, setCachedData } from "@/lib/cache";
 
 // Fonction pour normaliser les timestamps
 const normalizeTimestamp = (timestamp) => {
@@ -44,6 +45,13 @@ export function RecentActivity() {
     const fetchRecentMessages = async () => {
       try {
         setLoading(true);
+        
+        // Vérifier le cache d'abord
+        const cachedMessages = getCachedData('recentActivity');
+        if (cachedMessages) {
+          setMessages(cachedMessages);
+          setLoading(false);
+        }
         
         const response = await fetch(`/api/proxy/conversations?limit=3`, {
           headers: {
@@ -95,6 +103,7 @@ export function RecentActivity() {
           .slice(0, 3);
         
         setMessages(sortedMessages);
+        setCachedData('recentActivity', sortedMessages);
         setLoading(false);
       } catch (error) {
         console.error('Erreur lors de la récupération des messages récents:', error);

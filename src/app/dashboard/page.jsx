@@ -13,10 +13,17 @@ import {
 import { useEffect, useState } from "react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { getCachedData, setCachedData } from "@/lib/cache";
 
 // Fonction pour récupérer les métriques depuis l'API
 async function fetchDashboardMetrics() {
   try {
+    // Vérifier le cache d'abord
+    const cachedMetrics = getCachedData('metrics');
+    if (cachedMetrics) {
+      return cachedMetrics;
+    }
+
     const response = await fetch(`/api/proxy/dashboard-metrics`, {
       headers: {
         'Content-Type': 'application/json'
@@ -31,12 +38,17 @@ async function fetchDashboardMetrics() {
     const data = await response.json();
     
     // Formatage des données pour l'affichage avec vérification des valeurs undefined
-    return {
+    const formattedData = {
       totalMessages: data.total_messages ? data.total_messages.toLocaleString() : "0",
       responseTime: data.avg_response_time ? data.avg_response_time.toFixed(2) + 's' : "0s",
       satisfactionRate: data.satisfaction_rate ? data.satisfaction_rate.toFixed(0) + '%' : "Aucun avis",
       ragItems: data.rag_entries ? data.rag_entries.toLocaleString() : "0"
     };
+
+    // Mettre en cache les données formatées
+    setCachedData('metrics', formattedData);
+    
+    return formattedData;
   } catch (error) {
     console.error('Erreur lors de la récupération des métriques:', error);
     // Retourner des valeurs par défaut en cas d'erreur
