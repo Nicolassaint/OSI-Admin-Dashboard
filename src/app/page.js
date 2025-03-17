@@ -24,7 +24,6 @@ export default function Home() {
           alt="OSI Logo"
           width={200}
           height={200}
-          priority
         />
       </div>
       <h1 className="text-2xl font-bold mb-4">Bienvenue sur le Dashboard Admin OSI</h1>

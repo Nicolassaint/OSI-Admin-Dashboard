@@ -95,7 +95,6 @@ function LoadingSpinner() {
           alt="OSI Logo Loading" 
           width={80} 
           height={80} 
-          priority
           className="rounded-full"
         />
       </div>

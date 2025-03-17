@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
-  const apiUrl = process.env.API_URL;
+  const apiUrl = process.env.EXTERNAL_BACKEND_URL || process.env.API_URL;
   const WebSocketToken = process.env.WEBSOCKET_TOKEN;
 
   if (!apiUrl || !WebSocketToken) {
@@ -10,7 +10,7 @@ export async function GET(request) {
 
   // Convertir l'URL HTTP en URL WebSocket
   const wsUrl = apiUrl.replace('http', 'ws');
-  
+
   // Construire l'URL WebSocket avec le token d'authentification
   const proxyUrl = `${wsUrl}/ws?token=${WebSocketToken}`;
 

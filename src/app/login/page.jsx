@@ -70,7 +70,6 @@ export default function LoginPage() {
                 alt="OSI Logo"
                 width={150}
                 height={150}
-                priority
               />
             </div>
             <CardTitle className="text-2xl text-center">Service indisponible</CardTitle>
@@ -102,7 +101,6 @@ export default function LoginPage() {
               alt="OSI Logo"
               width={150}
               height={150}
-              priority
             />
           </div>
           <CardTitle className="text-2xl text-center">Dashboard Admin OSI</CardTitle>

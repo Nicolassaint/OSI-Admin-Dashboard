@@ -17,8 +17,16 @@ export const metadata = {
   title: "Dashboard Admin - OSI",
   description: "Tableau de bord d'administration pour OSI",
   icons: {
-    icon: '/osi_favicon.png',
-    apple: '/osi_favicon.png',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/osi_favicon.png' },
+      { url: '/osi_favicon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/osi_favicon.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/osi_favicon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
   },
 };
 
