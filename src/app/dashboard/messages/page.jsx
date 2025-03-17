@@ -204,6 +204,11 @@ export default function MessagesPage() {
                                 buttons: message.data.buttons || []
                               };
                               updatedMessages = [newConversation, ...prevMessages];
+                              // Mettre à jour le nombre total d'éléments
+                              setPagination(prev => ({
+                                ...prev,
+                                totalItems: prev.totalItems + 1
+                              }));
                             } else {
                               return prevMessages;
                             }
@@ -211,6 +216,11 @@ export default function MessagesPage() {
                             
                           case 'delete_conversation':
                             updatedMessages = prevMessages.filter(msg => msg.id !== message.data.id);
+                            // Mettre à jour le nombre total d'éléments
+                            setPagination(prev => ({
+                              ...prev,
+                              totalItems: prev.totalItems - 1
+                            }));
                             break;
                         }
                         
