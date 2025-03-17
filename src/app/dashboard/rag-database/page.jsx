@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import MessagePreview from "@/components/rag-database/message-preview";
+import ReactMarkdown from 'react-markdown';
 const ITEMS_PER_PAGE = 5; // Nombre d'entrées à afficher par page
 
 // Cache global pour stocker les données RAG entre les navigations
@@ -274,7 +275,9 @@ export default function RagDatabasePage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground">{entry.description}</p>
+                        <div className="text-sm text-muted-foreground prose prose-sm max-w-none">
+                          <ReactMarkdown>{entry.description}</ReactMarkdown>
+                        </div>
                       </div>
                       <div className="flex space-x-2">
                         <Button

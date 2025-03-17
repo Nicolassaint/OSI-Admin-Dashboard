@@ -51,12 +51,6 @@ export default function MessagePreview({ message }) {
             </span>
           )}
         </p>
-        
-        {normalizedMessage.description && (
-          <p className="text-sm text-muted-foreground">
-            <span className="font-medium">Description:</span> {normalizedMessage.description}
-          </p>
-        )}
       </div>
       
       {normalizedMessage.bubbles && normalizedMessage.bubbles.length > 0 && (
