@@ -8,14 +8,64 @@ import {
 import { Button } from "@/components/ui/button";
 import { Pencil1Icon } from "@radix-ui/react-icons";
 import { useRouter } from "next/navigation";
+import { memo } from "react";
 
-export default function RagMetricsDialog({ 
+// Composant pour afficher une source individuelle
+const SourceItem = memo(({ result, onEditSource }) => (
+  <div className="flex items-center gap-2">
+    <div className="flex-1 border rounded p-2">
+      <div className="flex justify-between items-center">
+        <span className="font-medium">{result.label}</span>
+        <span className="text-sm text-muted-foreground">
+          Score: {(result.score * 100).toFixed(1)}%
+        </span>
+      </div>
+      <div className="mt-1 w-full bg-gray-200 rounded-full h-2">
+        <div 
+          className="bg-primary h-2 rounded-full transition-all duration-300" 
+          style={{ width: `${result.score * 100}%` }}
+        ></div>
+      </div>
+    </div>
+    {result.rank !== 0 && (
+      <Button 
+        variant="outline" 
+        size="icon"
+        className="h-8 w-8 flex-shrink-0 border-2 hover:bg-primary hover:text-primary-foreground transition-colors"
+        onClick={() => onEditSource(result.label)}
+        title="Modifier la source"
+      >
+        <Pencil1Icon className="h-4 w-4" />
+      </Button>
+    )}
+  </div>
+));
+
+SourceItem.displayName = 'SourceItem';
+
+// Composant pour afficher les métriques de performance
+const PerformanceMetrics = memo(({ metrics }) => (
+  <div className="grid grid-cols-2 gap-2">
+    <div className="border rounded p-2">
+      <p className="text-sm font-medium">Temps de traitement total</p>
+      <p className="text-lg">{metrics.processing_time?.toFixed(2) || "N/A"} s</p>
+    </div>
+    <div className="border rounded p-2">
+      <p className="text-sm font-medium">Temps de traitement LLM</p>
+      <p className="text-lg">{metrics.llm_processing_time?.toFixed(2) || "N/A"} s</p>
+    </div>
+  </div>
+));
+
+PerformanceMetrics.displayName = 'PerformanceMetrics';
+
+const RagMetricsDialog = memo(({ 
   isOpen, 
   onOpenChange, 
   isLoading, 
   error, 
   metrics 
-}) {
+}) => {
   const router = useRouter();
 
   const handleEditSource = (label) => {
@@ -48,33 +98,11 @@ export default function RagMetricsDialog({
               {metrics.top_results && metrics.top_results.length > 0 ? (
                 <div className="space-y-2">
                   {metrics.top_results.map((result, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className="flex-1 border rounded p-2">
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">{result.label}</span>
-                          <span className="text-sm text-muted-foreground">
-                            Score: {(result.score * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="mt-1 w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-primary h-2 rounded-full" 
-                            style={{ width: `${result.score * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      {result.rank !== 0 && (
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          className="h-8 w-8 flex-shrink-0 border-2 hover:bg-primary hover:text-primary-foreground transition-colors"
-                          onClick={() => handleEditSource(result.label)}
-                          title="Modifier la source"
-                        >
-                          <Pencil1Icon className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
+                    <SourceItem 
+                      key={index} 
+                      result={result} 
+                      onEditSource={handleEditSource}
+                    />
                   ))}
                 </div>
               ) : (
@@ -82,16 +110,7 @@ export default function RagMetricsDialog({
               )}
             </div>
             
-            <div className="grid grid-cols-2 gap-2">
-              <div className="border rounded p-2">
-                <p className="text-sm font-medium">Temps de traitement total</p>
-                <p className="text-lg">{metrics.processing_time?.toFixed(2) || "N/A"} s</p>
-              </div>
-              <div className="border rounded p-2">
-                <p className="text-sm font-medium">Temps de traitement LLM</p>
-                <p className="text-lg">{metrics.llm_processing_time?.toFixed(2) || "N/A"} s</p>
-              </div>
-            </div>
+            <PerformanceMetrics metrics={metrics} />
             
             {metrics.default_chunk_used !== undefined && (
               <div className="border rounded p-2">
@@ -108,4 +127,8 @@ export default function RagMetricsDialog({
       </DialogContent>
     </Dialog>
   );
-} 
+});
+
+RagMetricsDialog.displayName = 'RagMetricsDialog';
+
+export default RagMetricsDialog; 

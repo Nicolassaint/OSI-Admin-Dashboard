@@ -15,7 +15,8 @@ const ITEMS_PER_PAGE = 5; // Nombre d'entrées à afficher par page
 // Cache global pour stocker les données RAG entre les navigations
 let ragDataCache = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 60000; // Durée de validité du cache en millisecondes (1 minute)
+// La durée du cache est de 5 minutes car les mises à jour sont gérées par WebSocket
+const CACHE_DURATION = 300000; // 5 minutes en millisecondes
 
 export default function RagDatabasePage() {
   const router = useRouter();

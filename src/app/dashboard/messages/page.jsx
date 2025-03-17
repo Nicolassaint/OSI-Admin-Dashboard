@@ -6,11 +6,13 @@ import React from "react";
 import { MessageList, MessageFilter, MessageSearch, MessageSort, MessageEvaluationFilter } from "@/components/messages";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { debounce } from "lodash";
 
 // Cache global pour stocker les messages entre les navigations
 let messagesCache = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 60000; // Durée de validité du cache en millisecondes (1 minute)
+// La durée du cache est de 5 minutes car les mises à jour sont gérées par WebSocket
+const CACHE_DURATION = 300000; // 5 minutes en millisecondes
 
 export default function MessagesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -28,7 +30,6 @@ export default function MessagesPage() {
     if (typeof window !== 'undefined') {
       const cacheInvalidated = window.localStorage.getItem('messagesCacheInvalidated');
       if (cacheInvalidated) {
-        // Supprimer le marqueur d'invalidation
         window.localStorage.removeItem('messagesCacheInvalidated');
         forceRefresh = true;
       }
@@ -47,48 +48,33 @@ export default function MessagesPage() {
     setError(null);
     
     try {
-      console.log('Récupération des conversations via le proxy');
-      
-      // Vérifier si nous sommes côté client avant de faire la requête
       if (typeof window !== 'undefined') {
-        console.log('Envoi de la requête à /api/proxy/conversations');
         const response = await fetch(`/api/proxy/conversations`, {
           headers: {
             'Content-Type': 'application/json'
           },
           signal: AbortSignal.timeout(10000),
-          cache: 'no-store' // S'assurer d'obtenir les données les plus récentes
+          // Utiliser le cache du navigateur si disponible
+          cache: 'force-cache',
+          next: { revalidate: 300 } // Revalider toutes les 5 minutes
         });
-        
-        console.log('Réponse reçue:', response.status, response.statusText);
         
         if (!response.ok) {
           const errorText = await response.text().catch(() => "Aucun détail disponible");
-          console.error(`Erreur HTTP: ${response.status} - ${response.statusText}. Détails:`, errorText);
           throw new Error(`Erreur HTTP: ${response.status} - ${response.statusText}. Détails: ${errorText}`);
         }
         
         const responseData = await response.json();
-        console.log("Données reçues du proxy:", responseData);
-        console.log("Type de données:", typeof responseData, Array.isArray(responseData) ? "Array" : "Not Array");
-        console.log("Nombre d'éléments:", Array.isArray(responseData) ? responseData.length : "N/A");
-        
-        // Déterminer la structure correcte des données
         let conversationsArray = responseData;
         
-        // Si les données sont dans un format différent, adapter en conséquence
         if (responseData.data && Array.isArray(responseData.data)) {
           conversationsArray = responseData.data;
         } else if (!Array.isArray(responseData)) {
-          console.error("Format de données inattendu:", responseData);
           throw new Error("Format de données inattendu");
         }
         
-        // Transformer les données pour correspondre à notre format
         const formattedMessages = conversationsArray.map(conv => {
-          // S'assurer que toutes les propriétés nécessaires existent
           if (!conv) return null;
-          
           return {
             id: conv.id || conv._id,
             user: "Utilisateur",
@@ -101,7 +87,7 @@ export default function MessagesPage() {
             image: conv.image,
             buttons: conv.buttons || []
           };
-        }).filter(msg => msg !== null); // Filtrer les éléments null
+        }).filter(msg => msg !== null);
         
         // Mettre à jour le cache
         messagesCache = formattedMessages;
@@ -112,7 +98,6 @@ export default function MessagesPage() {
     } catch (err) {
       console.error("Erreur lors de la récupération des conversations:", err);
       
-      // Vérifier si l'erreur est liée à un problème de connexion
       if (err.name === 'AbortError') {
         setError("La requête a expiré. Le serveur API est peut-être indisponible ou surchargé.");
       } else if (err.name === 'TypeError' || err.message.includes('Failed to fetch')) {
@@ -122,12 +107,6 @@ export default function MessagesPage() {
       } else {
         setError(`Impossible de charger les messages: ${err.message}`);
       }
-      
-      // Afficher des informations de débogage dans la console
-      console.debug("Tentative de connexion à l'API via le proxy échouée");
-      
-      // Ne pas définir de messages par défaut en cas d'erreur
-      // setMessages([]);
     } finally {
       setLoading(false);
     }
@@ -135,14 +114,8 @@ export default function MessagesPage() {
 
   // Récupérer les conversations depuis l'API au chargement
   useEffect(() => {
-    // Ajouter un petit délai pour s'assurer que tout est initialisé
-    const timer = setTimeout(() => {
-      console.log("Démarrage de la récupération des conversations après délai...");
-      fetchConversations();
-    }, 500);
-    
-    // Nettoyer le timer si le composant est démonté
-    return () => clearTimeout(timer);
+    // Supprimer le délai inutile
+    fetchConversations();
   }, [fetchConversations]);
 
   // Ajouter un écouteur d'événement pour détecter quand l'utilisateur revient sur cette page
@@ -217,98 +190,64 @@ export default function MessagesPage() {
                 
                 switch (message.type) {
                   case 'update_conversation':
-                    if (message.data) {
-                      setMessages(prevMessages => {
-                        const updatedMessages = prevMessages.map(msg => {
-                          if (msg.id === message.data.id) {
-                            return {
-                              ...msg,
-                              status: message.data.status || msg.status,
-                              evaluation: message.data.evaluation?.rating === 1 ? 1 :
-                                         message.data.evaluation?.rating === 0 ? 0 : null
-                            };
-                          }
-                          return msg;
-                        });
-                        
-                        // Mettre à jour le cache avec les nouvelles données
-                        messagesCache = updatedMessages;
-                        lastFetchTime = Date.now();
-                        
-                        return updatedMessages;
-                      });
-                    }
-                    break;
-                    
                   case 'evaluation_update':
-                    if (message.data) {
-                      setMessages(prevMessages => {
-                        const updatedMessages = prevMessages.map(msg => {
-                          if (msg.id === message.data.id) {
-                            // Déterminer le nouveau statut en fonction de l'évaluation
-                            // Une évaluation positive (1) marque comme résolu, une évaluation négative (0) reste en attente
-                            const newStatus = message.data.evaluation?.rating === 1 ? 'resolu' : 'en_attente';
-                            
-                            return {
-                              ...msg,
-                              evaluation: message.data.evaluation?.rating,
-                              status: newStatus
-                            };
-                          }
-                          return msg;
-                        });
-                        
-                        // Mettre à jour le cache avec les nouvelles données
-                        messagesCache = updatedMessages;
-                        lastFetchTime = Date.now();
-                        
-                        return updatedMessages;
-                      });
-                    }
-                    break;
-                    
                   case 'new_conversation':
+                  case 'delete_conversation':
                     if (message.data) {
                       setMessages(prevMessages => {
-                        // Vérifier si la conversation existe déjà
-                        const exists = prevMessages.some(msg => msg.id === message.data.id);
-                        if (exists) return prevMessages;
+                        let updatedMessages;
                         
-                        // Formater la nouvelle conversation
-                        const newConversation = {
-                          id: message.data.id,
-                          user: "Utilisateur",
-                          message: message.data.user_message || "",
-                          response: message.data.response || "",
-                          timestamp: message.data.timestamp || new Date().toISOString(),
-                          status: message.data.status || 'en_attente',
-                          evaluation: message.data.evaluation?.rating === 1 ? 1 : 
-                                     message.data.evaluation?.rating === 0 ? 0 : null,
-                          video: message.data.video,
-                          image: message.data.image,
-                          buttons: message.data.buttons || []
-                        };
+                        switch (message.type) {
+                          case 'update_conversation':
+                            updatedMessages = prevMessages.map(msg => 
+                              msg.id === message.data.id 
+                                ? { ...msg, status: message.data.status || msg.status, evaluation: message.data.evaluation?.rating === 1 ? 1 : message.data.evaluation?.rating === 0 ? 0 : null }
+                                : msg
+                            );
+                            break;
+                            
+                          case 'evaluation_update':
+                            updatedMessages = prevMessages.map(msg => 
+                              msg.id === message.data.id 
+                                ? { 
+                                    ...msg, 
+                                    evaluation: message.data.evaluation?.rating,
+                                    status: message.data.evaluation?.rating === 1 ? 'resolu' : 'en_attente'
+                                  }
+                                : msg
+                            );
+                            break;
+                            
+                          case 'new_conversation':
+                            if (!prevMessages.some(msg => msg.id === message.data.id)) {
+                              const newConversation = {
+                                id: message.data.id,
+                                user: "Utilisateur",
+                                message: message.data.user_message || "",
+                                response: message.data.response || "",
+                                timestamp: message.data.timestamp || new Date().toISOString(),
+                                status: message.data.status || 'en_attente',
+                                evaluation: message.data.evaluation?.rating === 1 ? 1 : message.data.evaluation?.rating === 0 ? 0 : null,
+                                video: message.data.video,
+                                image: message.data.image,
+                                buttons: message.data.buttons || []
+                              };
+                              updatedMessages = [newConversation, ...prevMessages];
+                            } else {
+                              return prevMessages;
+                            }
+                            break;
+                            
+                          case 'delete_conversation':
+                            updatedMessages = prevMessages.filter(msg => msg.id !== message.data.id);
+                            break;
+                        }
                         
-                        // Ajouter la nouvelle conversation au début de la liste
-                        const updatedMessages = [newConversation, ...prevMessages];
-                        
-                        // Mettre à jour le cache avec les nouvelles données
-                        messagesCache = updatedMessages;
-                        lastFetchTime = Date.now();
-                        
-                        return updatedMessages;
-                      });
-                    }
-                    break;
-                    
-                  case 'delete_conversation':
-                    if (message.data && message.data.id) {
-                      setMessages(prevMessages => {
-                        const updatedMessages = prevMessages.filter(msg => msg.id !== message.data.id);
-                        
-                        // Mettre à jour le cache avec les nouvelles données
-                        messagesCache = updatedMessages;
-                        lastFetchTime = Date.now();
+                        // Mettre à jour le cache uniquement si les messages ont changé
+                        if (JSON.stringify(updatedMessages) !== JSON.stringify(prevMessages)) {
+                          messagesCache = updatedMessages;
+                          lastFetchTime = Date.now();
+                        }
                         
                         return updatedMessages;
                       });
@@ -428,76 +367,104 @@ export default function MessagesPage() {
     fetchConversations(true); // Force le rechargement des données
   };
 
-  // Fonction pour mettre à jour le statut d'un message
-  const updateMessageStatus = async (id, status) => {
-    try {
-      const response = await fetch(`/api/proxy/conversations/${id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status })
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-      
-      // Mettre à jour l'état local
-      setMessages(prevMessages => {
-        const updatedMessages = prevMessages.map(msg => {
-          if (msg.id === id) {
-            return { ...msg, status };
-          }
-          return msg;
+  // Optimiser la fonction updateMessageStatus avec debounce
+  const updateMessageStatus = useCallback(
+    debounce(async (id, status) => {
+      try {
+        console.log(`Mise à jour du statut pour ${id} vers ${status}`);
+        
+        // Mettre à jour l'état local immédiatement
+        setMessages(prevMessages => {
+          const updatedMessages = prevMessages.map(msg => {
+            if (msg.id === id) {
+              return { ...msg, status };
+            }
+            return msg;
+          });
+          
+          // Mettre à jour le cache avec les nouvelles données
+          messagesCache = updatedMessages;
+          lastFetchTime = Date.now();
+          
+          return updatedMessages;
+        });
+
+        // Appel API en arrière-plan
+        const response = await fetch(`/api/proxy/conversations/${id}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ status })
         });
         
-        // Mettre à jour le cache avec les nouvelles données
-        messagesCache = updatedMessages;
-        lastFetchTime = Date.now();
+        if (!response.ok) {
+          // En cas d'erreur, on remet le statut précédent
+          setMessages(prevMessages => {
+            const updatedMessages = prevMessages.map(msg => {
+              if (msg.id === id) {
+                return { ...msg, status: msg.status };
+              }
+              return msg;
+            });
+            messagesCache = updatedMessages;
+            lastFetchTime = Date.now();
+            return updatedMessages;
+          });
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
         
-        return updatedMessages;
-      });
-      
-      return true;
-    } catch (error) {
-      console.error(`Erreur lors de la mise à jour du statut du message ${id}:`, error);
-      return false;
-    }
-  };
+        return true;
+      } catch (error) {
+        console.error(`Erreur lors de la mise à jour du statut du message ${id}:`, error);
+        return false;
+      }
+    }, 300),
+    []
+  );
 
   // Mettre à jour les fonctions de gestion des statuts
-  const markAsResolved = (id, newStatus = 'resolu') => updateMessageStatus(id, newStatus);
-  const archiveMessage = (id) => updateMessageStatus(id, 'archive');
+  const markAsResolved = useCallback((id, newStatus = 'resolu') => {
+    console.log(`markAsResolved appelé pour ${id} avec status ${newStatus}`);
+    updateMessageStatus(id, newStatus);
+  }, [updateMessageStatus]);
 
-  // Fonction pour supprimer un message
-  const deleteMessage = async (id) => {
-    try {
-      const response = await fetch(`/api/proxy/conversations/${id}`, {
-        method: 'DELETE'
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
+  const archiveMessage = useCallback((id) => {
+    console.log(`archiveMessage appelé pour ${id}`);
+    updateMessageStatus(id, 'archive');
+  }, [updateMessageStatus]);
+
+  // Optimiser la fonction deleteMessage avec debounce
+  const deleteMessage = useCallback(
+    debounce(async (id) => {
+      try {
+        const response = await fetch(`/api/proxy/conversations/${id}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Erreur HTTP: ${response.status}`);
+        }
+        
+        // Mettre à jour l'état local de manière optimisée
+        setMessages(prevMessages => {
+          const updatedMessages = prevMessages.filter(msg => msg.id !== id);
+          
+          // Mettre à jour le cache avec les nouvelles données
+          messagesCache = updatedMessages;
+          lastFetchTime = Date.now();
+          
+          return updatedMessages;
+        });
+        
+        return true;
+      } catch (error) {
+        console.error(`Erreur lors de la suppression du message ${id}:`, error);
+        return false;
       }
-      
-      // Mettre à jour l'état local
-      setMessages(prevMessages => {
-        const updatedMessages = prevMessages.filter(msg => msg.id !== id);
-        
-        // Mettre à jour le cache avec les nouvelles données
-        messagesCache = updatedMessages;
-        lastFetchTime = Date.now();
-        
-        return updatedMessages;
-      });
-      
-      return true;
-    } catch (error) {
-      console.error(`Erreur lors de la suppression du message ${id}:`, error);
-      return false;
-    }
-  };
+    }, 300),
+    []
+  );
 
   return (
     <div className="space-y-6">

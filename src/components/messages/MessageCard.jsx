@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { TrashIcon, InfoCircledIcon, ArchiveIcon } from "@radix-ui/react-icons";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
@@ -19,6 +19,9 @@ export default function MessageCard({
   const [ragMetrics, setRagMetrics] = useState(null);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
   const [metricsError, setMetricsError] = useState(null);
+  const [isArchiving, setIsArchiving] = useState(false);
+  // Cache pour les métriques RAG
+  const [metricsCache, setMetricsCache] = useState(new Map());
 
   // Fonction pour gérer la confirmation de suppression
   const handleDeleteConfirm = async () => {
@@ -71,7 +74,13 @@ export default function MessageCard({
       return;
     }
 
-    // Sinon, faire une requête API pour les récupérer
+    // Vérifier le cache
+    if (metricsCache.has(message.id)) {
+      setRagMetrics(metricsCache.get(message.id));
+      setShowRagMetrics(true);
+      return;
+    }
+
     setIsLoadingMetrics(true);
     setMetricsError(null);
     
@@ -79,7 +88,9 @@ export default function MessageCard({
       // Utiliser la route standard pour récupérer les données de la conversation
       console.log(`Récupération des métriques pour la conversation ${message.id}`);
       const response = await fetch(`/api/proxy/conversations/${message.id}`, {
-        cache: 'no-store' // S'assurer d'obtenir les données les plus récentes
+        cache: 'no-store',
+        // Ajouter un timeout pour éviter les requêtes bloquées
+        signal: AbortSignal.timeout(5000)
       });
       
       if (!response.ok) {
@@ -89,11 +100,12 @@ export default function MessageCard({
       const data = await response.json();
       
       // Vérifier les différentes structures possibles de la réponse
-      if (data && (data.rag_metrics || data.metrics)) {
-        setRagMetrics(data.rag_metrics || data.metrics);
-      } else if (data && data.data && (data.data.rag_metrics || data.data.metrics)) {
-        // Certains backends peuvent encapsuler les données dans un objet 'data'
-        setRagMetrics(data.data.rag_metrics || data.data.metrics);
+      const metrics = data?.rag_metrics || data?.metrics || data?.data?.rag_metrics || data?.data?.metrics;
+      
+      if (metrics) {
+        // Mettre en cache les métriques
+        setMetricsCache(prev => new Map(prev).set(message.id, metrics));
+        setRagMetrics(metrics);
       } else {
         setMetricsError("Aucune métrique RAG disponible pour cette conversation.");
       }
@@ -106,10 +118,43 @@ export default function MessageCard({
     }
   };
 
+  // Précharger les métriques au survol du bouton
+  const handleMetricsHover = useCallback(async () => {
+    if (!message.rag_metrics && !metricsCache.has(message.id)) {
+      try {
+        const response = await fetch(`/api/proxy/conversations/${message.id}`, {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(5000)
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const metrics = data?.rag_metrics || data?.metrics || data?.data?.rag_metrics || data?.data?.metrics;
+          if (metrics) {
+            setMetricsCache(prev => new Map(prev).set(message.id, metrics));
+          }
+        }
+      } catch (error) {
+        console.error("Erreur lors du préchargement des métriques:", error);
+      }
+    }
+  }, [message.id, message.rag_metrics, metricsCache]);
+
   // Fonction pour archiver un message
-  const handleArchive = async () => {
+  const handleArchive = async (e) => {
+    // Empêcher la propagation de l'événement
+    e?.stopPropagation?.();
+    
+    // Éviter les doubles appels
+    if (isArchiving) return;
+    
     try {
-      // Utiliser la même route et méthode que updateMessageStatus
+      setIsArchiving(true);
+      
+      // Mettre à jour l'interface immédiatement
+      onMarkAsResolved(message.id, 'archive');
+      
+      // Appel API en arrière-plan
       const response = await fetch(`/api/proxy/conversations/${message.id}/status`, {
         method: 'PUT',
         headers: {
@@ -119,32 +164,26 @@ export default function MessageCard({
       });
 
       if (!response.ok) {
+        // En cas d'erreur, on remet le statut précédent
+        onMarkAsResolved(message.id, message.status);
         const errorText = await response.text();
         console.error(`Erreur HTTP: ${response.status}`, errorText);
         
-        // Essayer de parser le texte d'erreur en JSON
         let errorDetails = errorText;
         try {
           const errorJson = JSON.parse(errorText);
           errorDetails = errorJson.detail || errorJson.error || errorText;
-        } catch (e) {
-          // Si ce n'est pas du JSON valide, garder le texte tel quel
-        }
+        } catch (e) {}
         
         throw new Error(`Erreur (${response.status}): ${errorDetails}`);
       }
 
-      // Informer l'utilisateur que l'action a réussi
       console.log(`Conversation ${message.id} archivée avec succès`);
-      // Mettre à jour l'interface utilisateur si nécessaire
-      // Si onMarkAsResolved est disponible, l'utiliser pour mettre à jour le statut localement
-      if (typeof onMarkAsResolved === 'function') {
-        onMarkAsResolved(message.id, 'archive');
-      }
     } catch (error) {
       console.error("Erreur lors de l'archivage:", error);
-      // Afficher une notification d'erreur à l'utilisateur
       alert(`Erreur lors de l'archivage: ${error.message}`);
+    } finally {
+      setIsArchiving(false);
     }
   };
 
@@ -162,6 +201,7 @@ export default function MessageCard({
             variant="outline"
             size="sm"
             onClick={handleShowRagMetrics}
+            onMouseEnter={handleMetricsHover}
             title="Voir les métriques RAG"
           >
             <InfoCircledIcon className="h-4 w-4" />
@@ -171,6 +211,7 @@ export default function MessageCard({
             size="sm"
             onClick={handleArchive}
             title="Archiver la conversation"
+            disabled={isArchiving}
           >
             <ArchiveIcon className="h-4 w-4" />
           </Button>

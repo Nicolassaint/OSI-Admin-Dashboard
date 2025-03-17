@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 
+// Cache pour stocker les réponses
+const responseCache = new Map();
+const CACHE_DURATION = 5000; // 5 secondes
+
 // PUT - Mettre à jour le statut d'une conversation
 export async function PUT(request, context) {
     const apiUrl = process.env.API_URL;
@@ -30,15 +34,18 @@ export async function PUT(request, context) {
 
         console.log(`[Proxy] PUT conversation status: ${url}`);
 
+        // Invalider le cache pour cette conversation
+        responseCache.delete(id);
+
         const response = await fetch(url, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${apiToken}`
             },
-            // Ne pas envoyer le statut dans le corps de la requête
-            // body: JSON.stringify({ status }),
-            cache: 'no-store'
+            cache: 'no-store',
+            // Ajouter un timeout pour éviter les requêtes bloquées
+            signal: AbortSignal.timeout(5000)
         });
 
         if (!response.ok) {
@@ -52,7 +59,21 @@ export async function PUT(request, context) {
         }
 
         const data = await response.json();
-        return NextResponse.json(data, { status: 200 });
+
+        // Mettre en cache la réponse
+        responseCache.set(id, {
+            data,
+            timestamp: Date.now()
+        });
+
+        return NextResponse.json(data, {
+            status: 200,
+            headers: {
+                'Cache-Control': 'no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        });
     } catch (error) {
         console.error("[Proxy] Error updating conversation status:", error);
         return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
