@@ -38,6 +38,8 @@ export default function BackupManager() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [createSuccess, setCreateSuccess] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [visibleItems, setVisibleItems] = useState(0);
   const tableContainerRef = useRef(null);
@@ -140,19 +142,18 @@ export default function BackupManager() {
       }
 
       const data = await response.json();
-      toast({
-        title: "Sauvegarde créée",
-        description: `La sauvegarde a été créée avec succès: ${data.filename}`,
+      toast.success("Sauvegarde créée", {
+        description: data.message || `La sauvegarde a été créée avec succès: ${data.filename}`
       });
       
+      setCreateSuccess(true);
+      setTimeout(() => setCreateSuccess(false), 5000);
       fetchBackups();
     } catch (error) {
       console.error("Erreur lors de la création de la sauvegarde:", error);
       setError("Impossible de créer la sauvegarde. " + error.message);
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de créer la sauvegarde. " + error.message,
+      toast.error("Erreur", {
+        description: "Impossible de créer la sauvegarde. " + error.message
       });
     } finally {
       setIsCreating(false);
@@ -166,6 +167,13 @@ export default function BackupManager() {
   };
 
   const handleRestoreBackup = async () => {
+    if (!selectedBackup || !selectedBackup.name) {
+      toast.error("Erreur", {
+        description: "Aucune sauvegarde sélectionnée"
+      });
+      return;
+    }
+
     setIsRestoring(true);
     setError(null);
     
@@ -175,29 +183,34 @@ export default function BackupManager() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ filename: selectedBackup.name })
+        body: JSON.stringify({
+          backupFile: selectedBackup.name
+        })
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || `Erreur: ${response.status}`);
+        const errorMessage = errorData.detail || errorData.error || errorData.message || `Erreur: ${response.status}`;
+        throw new Error(typeof errorMessage === 'object' ? JSON.stringify(errorMessage) : errorMessage);
       }
 
-      toast({
-        title: "Restauration réussie",
-        description: `La sauvegarde ${selectedBackup.name} a été restaurée avec succès.`,
+      const data = await response.json();
+      toast.success("Restauration réussie", {
+        description: data.message || `La sauvegarde ${selectedBackup.name} a été restaurée avec succès.`
       });
+      
+      setRestoreSuccess(true);
+      setTimeout(() => setRestoreSuccess(false), 5000);
     } catch (error) {
       console.error("Erreur lors de la restauration:", error);
-      setError("Impossible de restaurer la sauvegarde. " + error.message);
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de restaurer la sauvegarde. " + error.message,
+      setError(error.message);
+      toast.error("Erreur", {
+        description: `Échec de la restauration: ${error.message}`
       });
     } finally {
       setIsRestoring(false);
       setShowRestoreConfirm(false);
+      setSelectedBackup(null);
     }
   };
 
@@ -214,19 +227,28 @@ export default function BackupManager() {
     setDeleteError(null);
     
     try {
-      const response = await fetch(`/api/proxy/rag/backup?filename=${selectedBackup.name}`, {
+      const response = await fetch(`/api/proxy/rag/backup/delete?filename=${selectedBackup.name}`, {
         method: 'DELETE'
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Erreur: ${response.status}`);
+        let errorMessage;
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.error || `Erreur: ${response.status}`;
+        } else {
+          errorMessage = `Erreur: ${response.status}`;
+        }
+        throw new Error(errorMessage);
       }
 
       toast.success("Suppression réussie", {
         description: "La sauvegarde a été supprimée avec succès"
       });
 
+      setDeleteSuccess(true);
+      setTimeout(() => setDeleteSuccess(false), 5000);
       fetchBackups();
     } catch (error) {
       console.error("Erreur lors de la suppression:", error);
@@ -378,10 +400,24 @@ export default function BackupManager() {
           </div>
         )}
         
+        {createSuccess && (
+          <div className="text-sm text-green-600 flex items-start bg-green-50 p-3 rounded-md">
+            <CheckCircledIcon className="mr-2 h-4 w-4 flex-shrink-0 mt-0.5" />
+            <span>La sauvegarde a été créée avec succès.</span>
+          </div>
+        )}
+        
         {restoreSuccess && (
           <div className="text-sm text-green-600 flex items-start bg-green-50 p-3 rounded-md">
             <CheckCircledIcon className="mr-2 h-4 w-4 flex-shrink-0 mt-0.5" />
             <span>La sauvegarde a été restaurée avec succès.</span>
+          </div>
+        )}
+        
+        {deleteSuccess && (
+          <div className="text-sm text-green-600 flex items-start bg-green-50 p-3 rounded-md">
+            <CheckCircledIcon className="mr-2 h-4 w-4 flex-shrink-0 mt-0.5" />
+            <span>La sauvegarde a été supprimée avec succès.</span>
           </div>
         )}
         
