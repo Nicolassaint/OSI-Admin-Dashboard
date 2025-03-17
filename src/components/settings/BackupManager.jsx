@@ -60,7 +60,7 @@ export default function BackupManager() {
       }
 
       const data = await response.json();
-      console.log("Données reçues de l'API:", data); // Log pour déboguer
+      // console.log("Données reçues de l'API:", data); // Log pour déboguer
       
       // S'assurer que backups est un tableau
       const backupsArray = Array.isArray(data.backups) ? data.backups : [];
@@ -303,10 +303,10 @@ export default function BackupManager() {
 
   // Ajout d'un log pour déboguer
   useEffect(() => {
-    console.log("Backups filtrés:", filteredBackups);
-    console.log("Backups paginés:", paginatedBackups);
-    console.log("Page courante:", currentPage, "sur", totalPages);
-    console.log("Éléments visibles:", visibleItems);
+    // console.log("Backups filtrés:", filteredBackups);
+    // console.log("Backups paginés:", paginatedBackups);
+    // console.log("Page courante:", currentPage, "sur", totalPages);
+    // console.log("Éléments visibles:", visibleItems);
   }, [filteredBackups, paginatedBackups, currentPage, totalPages, visibleItems]);
 
   // Reset la page courante quand les filtres changent

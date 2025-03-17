@@ -22,7 +22,7 @@ export async function GET(request) {
         if (id) {
             const url = `${apiUrl}/api/conversation/${encodeURIComponent(id)}?token=${apiToken}`;
 
-            console.log(`[Proxy] GET conversation by ID: ${url}`);
+            // console.log(`[Proxy] GET conversation by ID: ${url}`);
 
             const response = await fetch(url, {
                 method: "GET",
@@ -56,7 +56,7 @@ export async function GET(request) {
             url += `&search=${encodeURIComponent(search)}`;
         }
 
-        console.log(`[Proxy] GET conversations: ${url}`);
+        // console.log(`[Proxy] GET conversations: ${url}`);
 
         const response = await fetch(url, {
             method: "GET",
@@ -78,12 +78,12 @@ export async function GET(request) {
         }
 
         const data = await response.json();
-        console.log(`[Proxy] Successfully fetched ${data.length || (data.data && data.data.length) || 0} conversations`);
-        console.log(`[Proxy] Sample data:`, data.length > 0 ? data[0] : (data.data && data.data.length > 0 ? data.data[0] : "No data"));
+        // console.log(`[Proxy] Successfully fetched ${data.length || (data.data && data.data.length) || 0} conversations`);
+        // console.log(`[Proxy] Sample data:`, data.length > 0 ? data[0] : (data.data && data.data.length > 0 ? data.data[0] : "No data"));
 
         // Si les données sont vides, renvoyer un tableau vide plutôt qu'un objet vide
         if (!data || (typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length === 0)) {
-            console.log("[Proxy] Données vides ou invalides, renvoi d'un tableau vide");
+            // console.log("[Proxy] Données vides ou invalides, renvoi d'un tableau vide");
             return NextResponse.json([], { status: 200 });
         }
 
@@ -102,7 +102,7 @@ export async function GET(request) {
 
         // S'assurer que nous renvoyons toujours un tableau
         if (!Array.isArray(normalizedData)) {
-            console.log("[Proxy] Les données ne sont pas un tableau, renvoi d'un tableau vide");
+            // console.log("[Proxy] Les données ne sont pas un tableau, renvoi d'un tableau vide");
             normalizedData = [];
         }
 
@@ -129,7 +129,7 @@ export async function POST(request) {
 
         // Vérifier si c'est une demande d'importation (tableau de conversations)
         if (Array.isArray(body)) {
-            console.log(`[Proxy] Importing ${body.length} conversations`);
+            // console.log(`[Proxy] Importing ${body.length} conversations`);
 
             // Appeler l'API d'importation
             const url = `${apiUrl}/api/import_conversations?token=${apiToken}`;
@@ -154,7 +154,7 @@ export async function POST(request) {
                     errorDetails = errorJson;
                 } catch (e) {
                     // Si ce n'est pas du JSON valide, garder le texte tel quel
-                    console.log("[Proxy] L'erreur n'est pas au format JSON:", e.message);
+                    // console.log("[Proxy] L'erreur n'est pas au format JSON:", e.message);
                 }
 
                 return NextResponse.json({
@@ -165,7 +165,7 @@ export async function POST(request) {
             }
 
             const data = await response.json();
-            console.log(`[Proxy] Successfully imported conversations`);
+            // console.log(`[Proxy] Successfully imported conversations`);
             return NextResponse.json({
                 success: true,
                 imported_count: body.length,
@@ -189,7 +189,7 @@ export async function POST(request) {
 
                 // Pour la mise à jour du statut, utiliser un corps vide
                 requestBody = {};
-                console.log(`[Proxy] Mise à jour du statut de la conversation ${conversationId} à ${status}`);
+                // console.log(`[Proxy] Mise à jour du statut de la conversation ${conversationId} à ${status}`);
             } else {
                 // Autres actions
                 url = `${apiUrl}/api/conversation/${conversationId}/${action}`;
@@ -201,8 +201,8 @@ export async function POST(request) {
             url += `?token=${apiToken}`;
         }
 
-        console.log(`[Proxy] ${method} conversation: ${url}`);
-        console.log(`[Proxy] Request body:`, requestBody);
+        // console.log(`[Proxy] ${method} conversation: ${url}`);
+        // console.log(`[Proxy] Request body:`, requestBody);
 
         const response = await fetch(url, {
             method: method,
@@ -224,7 +224,7 @@ export async function POST(request) {
         }
 
         const data = await response.json();
-        console.log(`[Proxy] Successfully processed conversation request`);
+        // console.log(`[Proxy] Successfully processed conversation request`);
         return NextResponse.json(data, { status: 201 });
     } catch (error) {
         console.error("Conversations proxy error:", error);
@@ -256,11 +256,11 @@ export async function DELETE(request) {
             return NextResponse.json({ error: "Conversation ID is required" }, { status: 400 });
         }
 
-        console.log(`[Proxy] Tentative de suppression de la conversation avec l'ID: ${id}`);
+        // console.log(`[Proxy] Tentative de suppression de la conversation avec l'ID: ${id}`);
 
         // Utiliser le format singulier 'conversation' qui correspond à la route backend
         const url = `${apiUrl}/api/conversation/${id}?token=${apiToken}`;
-        console.log(`[Proxy] DELETE conversation: ${url}`);
+        // console.log(`[Proxy] DELETE conversation: ${url}`);
 
         const response = await fetch(url, {
             method: "DELETE",
@@ -270,12 +270,12 @@ export async function DELETE(request) {
             }
         });
 
-        console.log(`[Proxy] Réponse reçue: ${response.status} ${response.statusText}`);
+        // console.log(`[Proxy] Réponse reçue: ${response.status} ${response.statusText}`);
 
         // Si l'erreur est 404, on peut renvoyer un message de succès
         // car la conversation n'existe pas ou a déjà été supprimée
         if (response.status === 404) {
-            console.log(`[Proxy] La conversation avec l'ID ${id} n'existe pas ou a déjà été supprimée`);
+            // console.log(`[Proxy] La conversation avec l'ID ${id} n'existe pas ou a déjà été supprimée`);
             // Retourner un statut 200 avec un message de succès pour éviter les erreurs côté client
             return NextResponse.json({
                 success: true,
@@ -299,14 +299,14 @@ export async function DELETE(request) {
         let responseData;
         try {
             responseData = await response.json();
-            console.log(`[Proxy] Réponse JSON de suppression:`, responseData);
+            // console.log(`[Proxy] Réponse JSON de suppression:`, responseData);
         } catch (e) {
-            console.log(`[Proxy] La réponse n'est pas au format JSON:`, e.message);
+            // console.log(`[Proxy] La réponse n'est pas au format JSON:`, e.message);
             // Si ce n'est pas du JSON, ce n'est pas grave, on continue
             responseData = { success: true };
         }
 
-        console.log(`[Proxy] Successfully deleted conversation: ${id}`);
+        // console.log(`[Proxy] Successfully deleted conversation: ${id}`);
         return NextResponse.json(responseData || { success: true }, { status: 200 });
     } catch (error) {
         console.error("Conversations proxy error:", error);

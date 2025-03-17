@@ -35,12 +35,12 @@ export const authOptions = {
 
           if (!response.ok) {
             const errorData = await response.text();
-            console.log("Authentication failed", response.status, errorData);
+            // console.log("Authentication failed", response.status, errorData);
             return null;
           }
 
           const userData = await response.json();
-          console.log("Authentication successful", userData);
+          // console.log("Authentication successful", userData);
 
           return {
             id: userData.id,

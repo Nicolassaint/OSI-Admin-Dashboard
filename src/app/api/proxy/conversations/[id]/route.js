@@ -20,7 +20,7 @@ export async function GET(request, context) {
     try {
         const url = `${apiUrl}/api/conversation/${encodeURIComponent(id)}?token=${apiToken}`;
 
-        console.log(`[Proxy] GET conversation by ID: ${url}`);
+        // console.log(`[Proxy] GET conversation by ID: ${url}`);
 
         const response = await fetch(url, {
             method: "GET",
@@ -69,7 +69,7 @@ export async function DELETE(request, context) {
     try {
         const url = `${apiUrl}/api/conversation/${encodeURIComponent(id)}?token=${apiToken}`;
 
-        console.log(`[Proxy] DELETE conversation: ${url}`);
+        // console.log(`[Proxy] DELETE conversation: ${url}`);
 
         const response = await fetch(url, {
             method: "DELETE",
@@ -82,7 +82,7 @@ export async function DELETE(request, context) {
         // Si l'erreur est 404, on peut renvoyer un message de succès
         // car la conversation n'existe pas ou a déjà été supprimée
         if (response.status === 404) {
-            console.log(`[Proxy] La conversation avec l'ID ${id} n'existe pas ou a déjà été supprimée`);
+            // console.log(`[Proxy] La conversation avec l'ID ${id} n'existe pas ou a déjà été supprimée`);
             // Retourner un statut 200 avec un message de succès pour éviter les erreurs côté client
             return NextResponse.json({
                 success: true,
@@ -105,9 +105,9 @@ export async function DELETE(request, context) {
         let data;
         try {
             data = await response.json();
-            console.log(`[Proxy] Réponse JSON de suppression:`, data);
+            // console.log(`[Proxy] Réponse JSON de suppression:`, data);
         } catch (e) {
-            console.log(`[Proxy] La réponse n'est pas au format JSON:`, e.message);
+            // console.log(`[Proxy] La réponse n'est pas au format JSON:`, e.message);
             // Si ce n'est pas du JSON, ce n'est pas grave, on continue
             data = { success: true };
         }

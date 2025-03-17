@@ -42,7 +42,7 @@ export default function MessagesPage() {
     // Vérifier si nous avons des données en cache et si elles sont encore valides
     const now = Date.now();
     if (!forceRefresh && messagesCache && (now - lastFetchTime < CACHE_DURATION)) {
-      console.log("Utilisation des messages en cache");
+      // console.log("Utilisation des messages en cache");
       setMessages(messagesCache);
       setLoading(false);
       return;
@@ -151,7 +151,7 @@ export default function MessagesPage() {
     const connectWebSocket = () => {
       // Éviter les connexions multiples
       if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
-        // console.log('Connexion WebSocket déjà établie ou en cours d\'établissement');
+        // // console.log('Connexion WebSocket déjà établie ou en cours d\'établissement');
         return;
       }
       
@@ -163,7 +163,7 @@ export default function MessagesPage() {
         return;
       }
       
-      // console.log('Création d\'une nouvelle connexion WebSocket');
+      // // console.log('Création d\'une nouvelle connexion WebSocket');
       
       try {
         // Utiliser le proxy pour obtenir l'URL WebSocket
@@ -182,7 +182,7 @@ export default function MessagesPage() {
             ws = new WebSocket(data.wsUrl);
             
             ws.onopen = () => {
-              // console.log('WebSocket connecté');
+              // // console.log('WebSocket connecté');
               reconnectAttempts = 0; // Réinitialiser le compteur après une connexion réussie
               setWsConnected(true);
               setError(null); // Effacer les erreurs précédentes
@@ -267,7 +267,7 @@ export default function MessagesPage() {
             };
             
             ws.onclose = (event) => {
-              console.log(`WebSocket fermé avec le code: ${event.code}`);
+              // console.log(`WebSocket fermé avec le code: ${event.code}`);
               setWsConnected(false);
               
               // Tenter de se reconnecter après un délai, sauf si la fermeture est intentionnelle
@@ -480,12 +480,12 @@ export default function MessagesPage() {
 
   // Mettre à jour les fonctions de gestion des statuts
   const markAsResolved = useCallback((id, newStatus = 'resolu') => {
-    console.log(`markAsResolved appelé pour ${id} avec status ${newStatus}`);
+    // console.log(`markAsResolved appelé pour ${id} avec status ${newStatus}`);
     updateMessageStatus(id, newStatus);
   }, [updateMessageStatus]);
 
   const archiveMessage = useCallback((id) => {
-    console.log(`archiveMessage appelé pour ${id}`);
+    // console.log(`archiveMessage appelé pour ${id}`);
     updateMessageStatus(id, 'archive');
   }, [updateMessageStatus]);
 

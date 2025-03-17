@@ -32,7 +32,7 @@ export async function PUT(request, context) {
         // Modifier l'URL pour inclure le statut comme paramètre de requête
         const url = `${apiUrl}/api/conversation/${encodeURIComponent(id)}/status?status=${encodeURIComponent(status)}&token=${apiToken}`;
 
-        console.log(`[Proxy] PUT conversation status: ${url}`);
+        // console.log(`[Proxy] PUT conversation status: ${url}`);
 
         // Invalider le cache pour cette conversation
         responseCache.delete(id);

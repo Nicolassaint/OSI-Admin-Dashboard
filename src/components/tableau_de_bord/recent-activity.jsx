@@ -128,7 +128,7 @@ export function RecentActivity() {
         const ws = new WebSocket(wsUrl);
         
         ws.onopen = () => {
-          console.log('WebSocket connecté pour les activités récentes');
+          // console.log('WebSocket connecté pour les activités récentes');
         };
         
         ws.onmessage = (event) => {

@@ -50,7 +50,7 @@ export default function RagDatabasePage() {
       // Vérifier si nous avons des données en cache et si elles sont encore valides
       const now = Date.now();
       if (!forceRefresh && ragDataCache && (now - lastFetchTime < CACHE_DURATION)) {
-        console.log("Utilisation des données en cache");
+        // console.log("Utilisation des données en cache");
         setRagData(ragDataCache);
         setFilteredData(ragDataCache);
         setTotalEntries(ragDataCache.length);

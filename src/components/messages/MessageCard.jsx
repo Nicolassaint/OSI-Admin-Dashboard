@@ -42,7 +42,7 @@ export default function MessageCard({
       // Considérer 404 comme un succès (la conversation n'existe pas ou a déjà été supprimée)
       // Ou si la réponse contient success: true
       if (response.status === 200 || responseData.success === true) {
-        console.log(`Conversation avec l'ID ${message.id} supprimée avec succès`);
+        // console.log(`Conversation avec l'ID ${message.id} supprimée avec succès`);
         // Appeler onDelete pour mettre à jour l'interface
         onDelete(message.id);
         return;
@@ -87,7 +87,7 @@ export default function MessageCard({
     
     try {
       // Utiliser la route standard pour récupérer les données de la conversation
-      console.log(`Récupération des métriques pour la conversation ${message.id}`);
+      // console.log(`Récupération des métriques pour la conversation ${message.id}`);
       const response = await fetch(`/api/proxy/conversations/${message.id}`, {
         cache: 'no-store',
         // Ajouter un timeout pour éviter les requêtes bloquées
@@ -186,7 +186,7 @@ export default function MessageCard({
         throw new Error(`Erreur (${response.status}): ${errorDetails}`);
       }
 
-      console.log(`Conversation ${message.id} archivée avec succès`);
+      // console.log(`Conversation ${message.id} archivée avec succès`);
     } catch (error) {
       console.error("Erreur lors de l'archivage:", error);
       alert(`Erreur lors de l'archivage: ${error.message}`);

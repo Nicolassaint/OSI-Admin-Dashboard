@@ -10,11 +10,11 @@ export async function DELETE(request) {
     }
 
     try {
-        console.log(`[Proxy] Tentative de suppression de toutes les conversations`);
+        // console.log(`[Proxy] Tentative de suppression de toutes les conversations`);
 
         // Utiliser le format pluriel 'conversations' pour la suppression de toutes les conversations
         const url = `${apiUrl}/api/conversations?token=${apiToken}`;
-        console.log(`[Proxy] DELETE all conversations: ${url}`);
+        // console.log(`[Proxy] DELETE all conversations: ${url}`);
 
         const response = await fetch(url, {
             method: "DELETE",
@@ -34,7 +34,7 @@ export async function DELETE(request) {
             }, { status: response.status });
         }
 
-        console.log(`[Proxy] Successfully deleted all conversations`);
+        // console.log(`[Proxy] Successfully deleted all conversations`);
         return NextResponse.json({ success: true }, { status: 200 });
     } catch (error) {
         console.error("[Proxy] Error deleting all conversations:", error);
