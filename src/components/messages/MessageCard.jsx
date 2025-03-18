@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { TrashIcon, InfoCircledIcon, ArchiveIcon } from "@radix-ui/react-icons";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import RagMetricsDialog from "@/components/messages/RagMetricsDialog";
+import { invalidateCache } from "@/lib/cache";
 
 export default function MessageCard({ 
   message, 
@@ -40,28 +41,23 @@ export default function MessageCard({
         }
       });
       
-      const responseData = await response.json().catch(() => ({ success: false }));
-      
       // Considérer 404 comme un succès (la conversation n'existe pas ou a déjà été supprimée)
-      // Ou si la réponse contient success: true
-      if (response.status === 200 || responseData.success === true) {
-        // console.log(`Conversation avec l'ID ${message.id} supprimée avec succès`);
-        // Appeler onDelete pour mettre à jour l'interface
+      if (response.status === 200 || response.status === 404) {
+        // Invalider le cache global avant de mettre à jour l'interface
+        invalidateCache();
+        
+        // Appeler onDelete pour mettre à jour l'interface immédiatement
         onDelete(message.id);
+        setShowDeleteConfirm(false);
         return;
       }
       
-      if (!response.ok) {
-        // Extraire les détails de l'erreur
-        const errorDetails = responseData.error || responseData.details || 'Erreur inconnue';
-        throw new Error(`Erreur (${response.status}): ${errorDetails}`);
-      }
+      // En cas d'erreur, essayer d'extraire les détails
+      const errorData = await response.json().catch(() => ({ error: 'Erreur inconnue' }));
+      throw new Error(`Erreur (${response.status}): ${errorData.error || errorData.details || 'Erreur inconnue'}`);
       
-      // Si la suppression a réussi, appeler la fonction onDelete
-      onDelete(message.id);
     } catch (error) {
       console.error("Erreur lors de la suppression de la conversation:", error);
-      // Afficher une notification d'erreur
       alert(`Erreur lors de la suppression: ${error.message}`);
     } finally {
       setIsDeleting(false);

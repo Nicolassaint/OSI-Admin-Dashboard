@@ -45,20 +45,28 @@ export function RecentActivity() {
     const fetchRecentMessages = async () => {
       try {
         setLoading(true);
+        setError(null);
         
-        // Vérifier le cache d'abord
+        // Toujours vérifier le cache d'abord
         const cachedMessages = getCachedData('recentActivity');
-        if (cachedMessages) {
-          setMessages(cachedMessages);
-          setLoading(false);
-        }
         
-        const response = await fetch(`/api/proxy/conversations?limit=3`, {
+        // Faire l'appel API en parallèle
+        const fetchPromise = fetch(`/api/proxy/conversations?limit=3`, {
           headers: {
             'Content-Type': 'application/json'
           },
-          signal: AbortSignal.timeout(10000)
+          signal: AbortSignal.timeout(10000),
+          cache: 'no-store'
         });
+
+        // Si on a des données en cache valides, les afficher immédiatement
+        if (cachedMessages && cachedMessages.length > 0) {
+          setMessages(cachedMessages);
+          setLoading(false);
+        }
+
+        // Attendre la réponse de l'API
+        const response = await fetchPromise;
         
         if (!response.ok) {
           throw new Error(`Erreur HTTP: ${response.status}`);
@@ -66,35 +74,47 @@ export function RecentActivity() {
         
         const data = await response.json();
         
+        // Vérifier la structure des données
+        if (!data || (Array.isArray(data) && data.length === 0) || 
+            (data.conversations && Array.isArray(data.conversations) && data.conversations.length === 0)) {
+          setMessages([]);
+          setError("Aucune conversation récente disponible");
+          setLoading(false);
+          return;
+        }
+
+        // Fonction helper pour extraire le message
+        const extractMessage = (conv) => {
+          if (!conv) return '';
+          
+          if (conv.user_message) return conv.user_message;
+          if (conv.message) return conv.message;
+          if (conv.question) return conv.question;
+          
+          if (conv.messages && Array.isArray(conv.messages) && conv.messages.length > 0) {
+            const firstMessage = conv.messages[0];
+            if (typeof firstMessage === 'string') return firstMessage;
+            return firstMessage.content || firstMessage.text || firstMessage.message || '';
+          }
+          
+          return '';
+        };
+        
         // Formater les données pour l'affichage
-        const formattedMessages = Array.isArray(data) 
-          ? data.map(conv => ({
+        const formattedMessages = (Array.isArray(data) ? data : (data.conversations || []))
+          .map(conv => {
+            const message = extractMessage(conv);
+            return {
               id: conv.id || conv._id,
               user: "Utilisateur",
-              message: conv.user_message 
-                ? conv.user_message.substring(0, 100) + (conv.user_message.length > 100 ? "..." : "") 
-                : (conv.messages && conv.messages.length > 0 
-                  ? conv.messages[0].content.substring(0, 100) + (conv.messages[0].content.length > 100 ? "..." : "") 
-                  : "Message vide"),
+              message: message 
+                ? message.substring(0, 100) + (message.length > 100 ? "..." : "")
+                : null,
               timestamp: conv.created_at || conv.timestamp || new Date().toISOString(),
               status: conv.status || "completed"
-            }))
-          : data.conversations && Array.isArray(data.conversations)
-            ? data.conversations.map(conv => ({
-                id: conv.id || conv._id,
-                user: "Utilisateur",
-                message: conv.user_message 
-                  ? conv.user_message.substring(0, 100) + (conv.user_message.length > 100 ? "..." : "") 
-                  : (conv.messages && conv.messages.length > 0 
-                    ? conv.messages[0].content.substring(0, 100) + (conv.messages[0].content.length > 100 ? "..." : "") 
-                    : "Message vide"),
-                timestamp: conv.created_at || conv.timestamp || new Date().toISOString(),
-                status: conv.status || "completed"
-              }))
-            : [];
-        
-        // Limiter à 3 messages et s'assurer qu'ils sont triés par date (les plus récents d'abord)
-        const sortedMessages = formattedMessages
+            };
+          })
+          .filter(msg => msg.message) // Filtrer les messages null ou undefined
           .sort((a, b) => {
             const dateA = normalizeTimestamp(a.timestamp);
             const dateB = normalizeTimestamp(b.timestamp);
@@ -102,95 +122,34 @@ export function RecentActivity() {
           })
           .slice(0, 3);
         
-        setMessages(sortedMessages);
-        setCachedData('recentActivity', sortedMessages);
+        if (formattedMessages.length === 0) {
+          setError("Aucune conversation récente disponible");
+          setMessages([]);
+        } else {
+          setMessages(formattedMessages);
+          setCachedData('recentActivity', formattedMessages);
+        }
+        
         setLoading(false);
       } catch (error) {
         console.error('Erreur lors de la récupération des messages récents:', error);
-        setError("Impossible de charger les messages récents");
+        // Si on a des données en cache, les garder en cas d'erreur
+        if (messages.length === 0) {
+          setError("Impossible de charger les messages récents");
+        }
         setLoading(false);
       }
     };
-    
+
     fetchRecentMessages();
     
-    // Configurer WebSocket pour les mises à jour en temps réel
-    const connectWebSocket = async () => {
-      try {
-        // Récupérer l'URL WebSocket depuis notre proxy
-        const wsResponse = await fetch('/api/proxy/ws');
-        if (!wsResponse.ok) {
-          throw new Error('Impossible de récupérer l\'URL WebSocket');
-        }
-        
-        const { wsUrl } = await wsResponse.json();
-        
-        const ws = new WebSocket(wsUrl);
-        
-        ws.onopen = () => {
-          // console.log('WebSocket connecté pour les activités récentes');
-        };
-        
-        ws.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data);
-            
-            // Vérifier si c'est un message de type 'new_conversation'
-            if (message.type === 'new_conversation' && message.data) {
-              // Ajouter le nouveau message au début de la liste
-              setMessages(prevMessages => {
-                const messageId = message.data.id || message.data._id;
-                
-                // Vérifier si le message existe déjà dans la liste
-                const messageExists = prevMessages.some(msg => msg.id === messageId);
-                if (messageExists) {
-                  // Si le message existe déjà, ne pas le rajouter
-                  return prevMessages;
-                }
-                
-                const newMessage = {
-                  id: messageId,
-                  user: "Utilisateur",
-                  message: message.data.user_message 
-                    ? message.data.user_message.substring(0, 100) + (message.data.user_message.length > 100 ? "..." : "") 
-                    : (message.data.messages && message.data.messages.length > 0 
-                      ? message.data.messages[0].content.substring(0, 100) + (message.data.messages[0].content.length > 100 ? "..." : "") 
-                      : "Message vide"),
-                  timestamp: message.data.created_at || message.data.timestamp || new Date().toISOString(),
-                  status: message.data.status || "completed"
-                };
-                
-                // Ajouter au début et limiter à 3 éléments
-                return [newMessage, ...prevMessages].slice(0, 3);
-              });
-            }
-          } catch (err) {
-            console.error("Erreur lors du traitement du message WebSocket:", err);
-          }
-        };
-        
-        ws.onerror = (error) => {
-          console.error('Erreur WebSocket pour les activités récentes:', error);
-        };
-        
-        return ws;
-      } catch (error) {
-        console.error("Erreur lors de la connexion WebSocket:", error);
-        return null;
-      }
-    };
-    
-    const wsPromise = connectWebSocket();
+    // Rafraîchir les données toutes les 30 secondes
+    const refreshInterval = setInterval(fetchRecentMessages, 30000);
     
     return () => {
-      // Nettoyer la connexion WebSocket lors du démontage
-      wsPromise.then(ws => {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.close();
-        }
-      });
+      clearInterval(refreshInterval);
     };
-  }, []);
+  }, []); // Dépendances vides pour ne s'exécuter qu'au montage
 
   const formatTimeAgo = (timestamp) => {
     try {
