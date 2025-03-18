@@ -183,6 +183,10 @@ export default function JsonFileSettings() {
       // Invalider le cache RAG
       await invalidateRagCache();
 
+      // Afficher le message de succès immédiatement
+      setUploadSuccess(true);
+      toast.success(result.message || "Importation réussie");
+
       try {
         // Synchroniser la base de données RAG
         const syncResponse = await fetch(`/api/proxy/rag/sync`, {
@@ -197,12 +201,6 @@ export default function JsonFileSettings() {
         console.error("Erreur lors de la synchronisation:", syncError);
         toast.warning("Import réussi mais erreur lors de la synchronisation");
       }
-
-      // Utiliser setTimeout pour s'assurer que l'état est mis à jour après les autres opérations
-      setTimeout(() => {
-        setUploadSuccess(true);
-        toast.success("Importation réussie");
-      }, 0);
 
     } catch (error) {
       console.error("Erreur lors de l'importation du fichier:", error);
