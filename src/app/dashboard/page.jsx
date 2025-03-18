@@ -131,23 +131,40 @@ export default function DashboardPage() {
         
         ws.onmessage = (event) => {
           try {
-            // console.log("Message WebSocket brut reçu:", event.data);
             const message = JSON.parse(event.data);
-            // console.log("Message WebSocket parsé:", message);
             
-            // Vérifier si c'est un message de type 'metrics_update'
             if (message.type === 'metrics_update' && message.data) {
-              // console.log("Mise à jour des métriques reçue:", message.data);
-              
               const data = message.data;
               
-              // Mettre à jour les métriques avec les nouvelles données et vérification des undefined
-              setMetricsData({
+              const formattedData = {
                 totalMessages: data.total_messages ? data.total_messages.toLocaleString() : "0",
                 responseTime: data.avg_response_time ? data.avg_response_time.toFixed(2) + 's' : "0s",
                 satisfactionRate: data.satisfaction_rate ? data.satisfaction_rate.toFixed(0) + '%' : "Aucun avis",
                 ragItems: data.rag_entries ? data.rag_entries.toLocaleString() : "0"
-              });
+              };
+
+              setMetricsData(formattedData);
+              setCachedData('metrics', formattedData);
+            } else if (message.type === 'new_conversation') {
+              const currentMetrics = getCachedData('metrics') || metricsData;
+              if (currentMetrics) {
+                const updatedMetrics = {
+                  ...currentMetrics,
+                  totalMessages: (parseInt(currentMetrics.totalMessages.replace(/,/g, '')) + 1).toLocaleString()
+                };
+                setMetricsData(updatedMetrics);
+                setCachedData('metrics', updatedMetrics);
+              }
+            } else if (message.type === 'delete_conversation') {
+              const currentMetrics = getCachedData('metrics') || metricsData;
+              if (currentMetrics) {
+                const updatedMetrics = {
+                  ...currentMetrics,
+                  totalMessages: Math.max(0, parseInt(currentMetrics.totalMessages.replace(/,/g, '')) - 1).toLocaleString()
+                };
+                setMetricsData(updatedMetrics);
+                setCachedData('metrics', updatedMetrics);
+              }
             }
           } catch (err) {
             console.error("Erreur lors du traitement du message WebSocket:", err, "Données brutes:", event.data);

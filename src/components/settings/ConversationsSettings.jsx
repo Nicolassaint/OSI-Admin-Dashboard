@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, Download, Trash2, Upload, X } from "lucide-react";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
+import { invalidateCache } from "@/lib/cache";
 
 // Nouveau composant pour afficher les erreurs détaillées
 function ErrorDialog({ isOpen, onClose, title, errorMessage }) {
@@ -74,6 +75,8 @@ export default function ConversationsSettings() {
       }
 
       setDeleteSuccess(true);
+      // Invalider le cache après une suppression réussie
+      invalidateCache();
       setTimeout(() => setDeleteSuccess(false), 3000);
     } catch (error) {
       console.error("Erreur lors de la suppression des conversations:", error);
@@ -254,7 +257,8 @@ export default function ConversationsSettings() {
 
       const result = await response.json();
       setUploadSuccess(true);
-      // console.log(`Importation réussie: ${result.imported_count} conversations importées`);
+      // Invalider le cache après une importation réussie
+      invalidateCache();
       setTimeout(() => setUploadSuccess(false), 3000);
     } catch (error) {
       console.error("Erreur lors de l'importation des conversations:", error);
