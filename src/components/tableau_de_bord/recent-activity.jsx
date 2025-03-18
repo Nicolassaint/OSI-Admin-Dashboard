@@ -56,7 +56,7 @@ export function RecentActivity() {
         ws = new WebSocket(wsUrl);
         
         ws.onmessage = (event) => {
-          if (!isSubscribed) return; // Ne pas mettre à jour si démonté
+          if (!isSubscribed) return;
           
           try {
             const message = JSON.parse(event.data);
@@ -79,6 +79,9 @@ export function RecentActivity() {
                       timestamp: message.data.created_at || message.data.timestamp || new Date().toISOString(),
                       status: message.data.status || "completed"
                     };
+                    
+                    setLoading(false);
+                    setError(null);
                     
                     const updatedMessages = [newMessage, ...prevMessages].slice(0, 3);
                     setCachedData('recentActivity', updatedMessages);
@@ -162,7 +165,7 @@ export function RecentActivity() {
             (data.conversations && Array.isArray(data.conversations) && data.conversations.length === 0)) {
           if (isSubscribed) {
             setMessages([]);
-            setError("Aucune conversation récente disponible");
+            setLoading(false);
           }
           return;
         }
