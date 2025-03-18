@@ -91,14 +91,15 @@ export async function POST(request) {
         });
 
         if (!response.ok) {
-            return NextResponse.json({ error: "Failed to create RAG entry" }, { status: response.status });
+            const errorData = await response.json();
+            return NextResponse.json({ error: errorData.detail || "Failed to create RAG entry" }, { status: response.status });
         }
 
         const data = await response.json();
         return NextResponse.json(data, { status: 201 });
     } catch (error) {
         console.error("RAG data proxy error:", error);
-        return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+        return NextResponse.json({ error: error.message || "Service unavailable" }, { status: 503 });
     }
 }
 
@@ -132,14 +133,15 @@ export async function PUT(request) {
         });
 
         if (!response.ok) {
-            return NextResponse.json({ error: "Failed to update RAG entry" }, { status: response.status });
+            const errorData = await response.json();
+            return NextResponse.json({ error: errorData.detail || "Failed to update RAG entry" }, { status: response.status });
         }
 
         const data = await response.json();
         return NextResponse.json(data, { status: 200 });
     } catch (error) {
         console.error("RAG data proxy error:", error);
-        return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+        return NextResponse.json({ error: error.message || "Service unavailable" }, { status: 503 });
     }
 }
 
@@ -160,7 +162,6 @@ export async function DELETE(request) {
             return NextResponse.json({ error: "ID is required" }, { status: 400 });
         }
 
-        // Corriger l'URL pour correspondre à votre backend
         const response = await fetch(`${apiUrl}/api/rag/data/${encodeURIComponent(id)}?token=${apiToken}`, {
             method: "DELETE",
             headers: {
@@ -170,13 +171,14 @@ export async function DELETE(request) {
         });
 
         if (!response.ok) {
-            return NextResponse.json({ error: "Failed to delete RAG entry" }, { status: response.status });
+            const errorData = await response.json();
+            return NextResponse.json({ error: errorData.detail || "Failed to delete RAG entry" }, { status: response.status });
         }
 
         const data = await response.json();
         return NextResponse.json(data, { status: 200 });
     } catch (error) {
         console.error("RAG data proxy error:", error);
-        return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+        return NextResponse.json({ error: error.message || "Service unavailable" }, { status: 503 });
     }
 } 

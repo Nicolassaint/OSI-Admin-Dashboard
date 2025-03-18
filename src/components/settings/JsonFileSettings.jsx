@@ -1,8 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Upload, Download, Share2, Trash2 } from "lucide-react";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { invalidateRagCache } from "@/lib/cache";
 
 export default function JsonFileSettings() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -13,14 +22,41 @@ export default function JsonFileSettings() {
   const [deleteError, setDeleteError] = useState(null);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
   
-  // États pour les dialogues de confirmation
+  // États pour les dialogues
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
 
   // États pour le message de succès
   const [exportSuccess, setExportSuccess] = useState(false);
+
+  // Effet pour gérer la disparition automatique des messages
+  useEffect(() => {
+    const timeouts = [];
+
+    if (uploadSuccess) {
+      timeouts.push(setTimeout(() => setUploadSuccess(false), 5000));
+    }
+    if (exportSuccess) {
+      timeouts.push(setTimeout(() => setExportSuccess(false), 5000));
+    }
+    if (deleteSuccess) {
+      timeouts.push(setTimeout(() => setDeleteSuccess(false), 5000));
+    }
+    if (uploadError) {
+      timeouts.push(setTimeout(() => setUploadError(null), 5000));
+    }
+    if (exportError) {
+      timeouts.push(setTimeout(() => setExportError(null), 5000));
+    }
+    if (deleteError) {
+      timeouts.push(setTimeout(() => setDeleteError(null), 5000));
+    }
+
+    return () => timeouts.forEach(clearTimeout);
+  }, [uploadSuccess, exportSuccess, deleteSuccess, uploadError, exportError, deleteError]);
 
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -51,10 +87,80 @@ export default function JsonFileSettings() {
       });
 
       // Vérifier que le contenu est un JSON valide
+      let jsonData;
       try {
-        JSON.parse(fileContent);
+        jsonData = JSON.parse(fileContent);
       } catch (e) {
         throw new Error("Le fichier n'est pas un JSON valide");
+      }
+
+      // Formater les données selon le format attendu par le backend
+      let formattedData;
+      if (Array.isArray(jsonData)) {
+        // Si c'est un tableau, le convertir en objet avec les noms comme clés
+        formattedData = {};
+        for (const entry of jsonData) {
+          if (!entry.name) {
+            throw new Error("Chaque entrée doit avoir un champ 'name'");
+          }
+          formattedData[entry.name] = {
+            name: entry.name,
+            description: entry.description || "",
+            search: entry.search || "",
+            details: {
+              Label: entry.details?.Label || "",
+              Messages: entry.details?.Messages?.map(msg => ({
+                Label: msg.Label || "",
+                Description: msg.Description || "",
+                Bubbles: (msg.Bubbles || []).map(bubble => ({
+                  Text: bubble.Text || "",
+                  Image: bubble.Image || "",
+                  Video: bubble.Video || "",
+                  Order: bubble.Order || 0
+                })),
+                Buttons: (msg.Buttons || []).map(button => ({
+                  Label: button.Label || "",
+                  Link: button.Link || "",
+                  Type: button.Type || "primary",
+                  Order: button.Order || 0
+                }))
+              })) || []
+            }
+          };
+        }
+      } else if (typeof jsonData === 'object' && jsonData !== null) {
+        // Si c'est déjà un objet, vérifier son format
+        formattedData = {};
+        for (const [key, value] of Object.entries(jsonData)) {
+          if (typeof value === 'object' && value !== null) {
+            formattedData[key] = {
+              name: value.name || key,
+              description: value.description || "",
+              search: value.search || "",
+              details: {
+                Label: value.details?.Label || "",
+                Messages: value.details?.Messages?.map(msg => ({
+                  Label: msg.Label || "",
+                  Description: msg.Description || "",
+                  Bubbles: (msg.Bubbles || []).map(bubble => ({
+                    Text: bubble.Text || "",
+                    Image: bubble.Image || "",
+                    Video: bubble.Video || "",
+                    Order: bubble.Order || 0
+                  })),
+                  Buttons: (msg.Buttons || []).map(button => ({
+                    Label: button.Label || "",
+                    Link: button.Link || "",
+                    Type: button.Type || "primary",
+                    Order: button.Order || 0
+                  }))
+                })) || []
+              }
+            };
+          }
+        }
+      } else {
+        throw new Error("Le fichier JSON doit contenir un tableau ou un objet");
       }
 
       // Envoyer le contenu JSON au serveur
@@ -63,19 +169,45 @@ export default function JsonFileSettings() {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: fileContent
+        body: JSON.stringify(formattedData)
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail);
+        throw new Error(errorData.error || errorData.detail || `Erreur ${response.status}: ${response.statusText}`);
       }
 
-      setUploadSuccess(true);
-      setTimeout(() => setUploadSuccess(false), 3000);
+      const result = await response.json();
+      console.log("Réponse de l'API:", result);
+
+      // Invalider le cache RAG
+      await invalidateRagCache();
+
+      try {
+        // Synchroniser la base de données RAG
+        const syncResponse = await fetch(`/api/proxy/rag/sync`, {
+          method: 'POST'
+        });
+        
+        if (!syncResponse.ok) {
+          console.error("Erreur de synchronisation:", await syncResponse.text());
+          toast.warning("Import réussi mais erreur lors de la synchronisation");
+        }
+      } catch (syncError) {
+        console.error("Erreur lors de la synchronisation:", syncError);
+        toast.warning("Import réussi mais erreur lors de la synchronisation");
+      }
+
+      // Utiliser setTimeout pour s'assurer que l'état est mis à jour après les autres opérations
+      setTimeout(() => {
+        setUploadSuccess(true);
+        toast.success("Importation réussie");
+      }, 0);
+
     } catch (error) {
       console.error("Erreur lors de l'importation du fichier:", error);
       setUploadError(error.message);
+      toast.error(`Erreur lors de l'importation: ${error.message}`);
     } finally {
       setSelectedFile(null);
       setIsImporting(false);
@@ -96,12 +228,10 @@ export default function JsonFileSettings() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail);
+        throw new Error(errorData.detail || `Erreur ${response.status}: ${response.statusText}`);
       }
 
-      // Récupérer les données JSON et extraire uniquement la partie 'data'
-      const responseData = await response.json();
-      const data = responseData.data;
+      const data = await response.json();
       
       // Créer un fichier à télécharger avec les données
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -123,13 +253,13 @@ export default function JsonFileSettings() {
         URL.revokeObjectURL(url);
       }, 0);
 
-      // Afficher le message de succès
       setExportSuccess(true);
-      setTimeout(() => setExportSuccess(false), 3000);
+      toast.success("Données exportées avec succès");
 
     } catch (error) {
       console.error("Erreur lors de l'exportation des données:", error);
       setExportError(error.message);
+      toast.error("Erreur lors de l'exportation: " + error.message);
     } finally {
       setIsExporting(false);
     }
@@ -146,7 +276,7 @@ export default function JsonFileSettings() {
     setShowDeleteConfirm(false);
 
     try {
-      const response = await fetch(`/api/proxy/rag/data`, {
+      const response = await fetch(`/api/proxy/rag/delete`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'
@@ -155,14 +285,27 @@ export default function JsonFileSettings() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail);
+        throw new Error(errorData.detail || `Erreur ${response.status}: ${response.statusText}`);
       }
 
+      const data = await response.json();
+
+      // Invalider le cache global
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('ragDataCacheInvalidated', 'true');
+      }
+
+      // Synchroniser la base de données RAG
+      await fetch(`/api/proxy/rag/sync`, {
+        method: 'POST'
+      });
+
       setDeleteSuccess(true);
-      setTimeout(() => setDeleteSuccess(false), 3000);
+      toast.success("Données supprimées avec succès");
     } catch (error) {
       console.error("Erreur lors de la suppression des données:", error);
       setDeleteError(error.message);
+      toast.error("Erreur lors de la suppression: " + error.message);
     } finally {
       setIsDeleting(false);
     }
@@ -198,7 +341,10 @@ export default function JsonFileSettings() {
           </div>
           
           {uploadSuccess && (
-            <p className="text-sm text-green-600">Fichier importé avec succès.</p>
+            <p className="text-sm text-green-600 flex items-start">
+              <AlertCircle className="mr-1 h-4 w-4 flex-shrink-0 mt-0.5" />
+              <span>Importation réussie</span>
+            </p>
           )}
           
           {uploadError && (

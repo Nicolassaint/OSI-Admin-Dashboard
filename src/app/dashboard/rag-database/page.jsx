@@ -11,6 +11,7 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import MessagePreview from "@/components/rag-database/message-preview";
 import ReactMarkdown from 'react-markdown';
+import { getRagCache, setRagCache, invalidateRagCache, isRagCacheInvalid, resetRagCacheInvalidation } from "@/lib/cache";
 const ITEMS_PER_PAGE = 5; // Nombre d'entrées à afficher par page
 
 // Cache global pour stocker les données RAG entre les navigations
@@ -37,25 +38,22 @@ export default function RagDatabasePage() {
   // Fonction pour récupérer les données depuis l'API backend
   const fetchRagData = useCallback(async (forceRefresh = false) => {
     try {
-      // Vérifier si le cache a été invalidé par la page d'édition
-      if (typeof window !== 'undefined') {
-        const cacheInvalidated = window.localStorage.getItem('ragDataCacheInvalidated');
-        if (cacheInvalidated) {
-          // Supprimer le marqueur d'invalidation
-          window.localStorage.removeItem('ragDataCacheInvalidated');
-          forceRefresh = true;
-        }
+      // Vérifier si le cache est invalide
+      if (isRagCacheInvalid()) {
+        forceRefresh = true;
+        resetRagCacheInvalidation();
       }
 
       // Vérifier si nous avons des données en cache et si elles sont encore valides
-      const now = Date.now();
-      if (!forceRefresh && ragDataCache && (now - lastFetchTime < CACHE_DURATION)) {
-        // console.log("Utilisation des données en cache");
-        setRagData(ragDataCache);
-        setFilteredData(ragDataCache);
-        setTotalEntries(ragDataCache.length);
-        setLoading(false);
-        return;
+      if (!forceRefresh) {
+        const cachedData = getRagCache();
+        if (cachedData) {
+          setRagData(cachedData);
+          setFilteredData(cachedData);
+          setTotalEntries(cachedData.length);
+          setLoading(false);
+          return;
+        }
       }
 
       setLoading(true);
@@ -75,8 +73,7 @@ export default function RagDatabasePage() {
       const formattedData = Array.isArray(data) ? data : [];
       
       // Mettre à jour le cache
-      ragDataCache = formattedData;
-      lastFetchTime = now;
+      setRagCache(formattedData);
       
       setRagData(formattedData);
       setFilteredData(formattedData);
@@ -94,8 +91,8 @@ export default function RagDatabasePage() {
     
     // Ajouter un écouteur d'événement pour détecter quand l'utilisateur revient sur cette page
     const handleFocus = () => {
-      // Si le cache est périmé, recharger les données
-      if (Date.now() - lastFetchTime > CACHE_DURATION) {
+      // Si le cache est périmé ou invalide, recharger les données
+      if (isRagCacheInvalid() || Date.now() - lastFetchTime > CACHE_DURATION) {
         fetchRagData(true);
       }
     };
@@ -157,8 +154,7 @@ export default function RagDatabasePage() {
       setTotalEntries(prev => prev - 1);
       
       // Mettre à jour le cache
-      ragDataCache = updatedData;
-      lastFetchTime = Date.now();
+      setRagCache(updatedData);
       
       // Fermer la boîte de dialogue de confirmation
       setDeleteConfirmation({ show: false, entryId: null });
