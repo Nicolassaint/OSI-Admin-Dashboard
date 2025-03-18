@@ -42,31 +42,115 @@ export function RecentActivity() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchRecentMessages = async () => {
+    let isSubscribed = true; // Pour éviter les mises à jour si le composant est démonté
+    let ws = null; // Pour stocker la référence WebSocket
+
+    const setupWebSocket = async () => {
       try {
+        const wsResponse = await fetch('/api/proxy/ws');
+        if (!wsResponse.ok) {
+          throw new Error('Impossible de récupérer l\'URL WebSocket');
+        }
+        
+        const { wsUrl } = await wsResponse.json();
+        ws = new WebSocket(wsUrl);
+        
+        ws.onmessage = (event) => {
+          if (!isSubscribed) return; // Ne pas mettre à jour si démonté
+          
+          try {
+            const message = JSON.parse(event.data);
+            
+            switch (message.type) {
+              case 'new_conversation':
+                if (message.data) {
+                  setMessages(prevMessages => {
+                    const messageId = message.data.id || message.data._id;
+                    if (prevMessages.some(msg => msg.id === messageId)) {
+                      return prevMessages;
+                    }
+                    
+                    const newMessage = {
+                      id: messageId,
+                      user: "Utilisateur",
+                      message: message.data.user_message 
+                        ? message.data.user_message.substring(0, 100) + (message.data.user_message.length > 100 ? "..." : "") 
+                        : message.data.message || "Aucun contenu disponible",
+                      timestamp: message.data.created_at || message.data.timestamp || new Date().toISOString(),
+                      status: message.data.status || "completed"
+                    };
+                    
+                    const updatedMessages = [newMessage, ...prevMessages].slice(0, 3);
+                    setCachedData('recentActivity', updatedMessages);
+                    return updatedMessages;
+                  });
+                }
+                break;
+              
+              case 'delete_conversation':
+                if (message.data && message.data.id) {
+                  setMessages(prevMessages => {
+                    const updatedMessages = prevMessages.filter(msg => msg.id !== message.data.id);
+                    setCachedData('recentActivity', updatedMessages);
+                    return updatedMessages;
+                  });
+                }
+                break;
+                
+              case 'update_conversation':
+                if (message.data && message.data.id) {
+                  setMessages(prevMessages => {
+                    const updatedMessages = prevMessages.map(msg => 
+                      msg.id === message.data.id 
+                        ? {
+                            ...msg,
+                            message: message.data.user_message 
+                              ? message.data.user_message.substring(0, 100) + (message.data.user_message.length > 100 ? "..." : "") 
+                              : message.data.message || msg.message,
+                            status: message.data.status || msg.status
+                          }
+                        : msg
+                    );
+                    setCachedData('recentActivity', updatedMessages);
+                    return updatedMessages;
+                  });
+                }
+                break;
+            }
+          } catch (err) {
+            console.error("Erreur lors du traitement du message WebSocket:", err);
+          }
+        };
+      } catch (error) {
+        console.error('Erreur lors de la configuration WebSocket:', error);
+        if (isSubscribed) {
+          setError("Impossible de se connecter aux mises à jour en temps réel");
+        }
+      }
+    };
+
+    const fetchInitialData = async () => {
+      try {
+        if (!isSubscribed) return;
         setLoading(true);
         setError(null);
         
-        // Toujours vérifier le cache d'abord
+        // Vérifier le cache d'abord
         const cachedMessages = getCachedData('recentActivity');
+        if (cachedMessages && cachedMessages.length > 0) {
+          setMessages(cachedMessages);
+          setLoading(false);
+          return;
+        }
         
-        // Faire l'appel API en parallèle
-        const fetchPromise = fetch(`/api/proxy/conversations?limit=3`, {
+        // Faire l'appel API initial seulement si pas de cache
+        const response = await fetch(`/api/proxy/conversations?limit=3`, {
           headers: {
             'Content-Type': 'application/json'
           },
           signal: AbortSignal.timeout(10000),
           cache: 'no-store'
         });
-
-        // Si on a des données en cache valides, les afficher immédiatement
-        if (cachedMessages && cachedMessages.length > 0) {
-          setMessages(cachedMessages);
-          setLoading(false);
-        }
-
-        // Attendre la réponse de l'API
-        const response = await fetchPromise;
         
         if (!response.ok) {
           throw new Error(`Erreur HTTP: ${response.status}`);
@@ -74,12 +158,12 @@ export function RecentActivity() {
         
         const data = await response.json();
         
-        // Vérifier la structure des données
         if (!data || (Array.isArray(data) && data.length === 0) || 
             (data.conversations && Array.isArray(data.conversations) && data.conversations.length === 0)) {
-          setMessages([]);
-          setError("Aucune conversation récente disponible");
-          setLoading(false);
+          if (isSubscribed) {
+            setMessages([]);
+            setError("Aucune conversation récente disponible");
+          }
           return;
         }
 
@@ -100,7 +184,7 @@ export function RecentActivity() {
           return '';
         };
         
-        // Formater les données pour l'affichage
+        // Formater et filtrer les messages comme avant...
         const formattedMessages = (Array.isArray(data) ? data : (data.conversations || []))
           .map(conv => {
             const message = extractMessage(conv);
@@ -114,40 +198,45 @@ export function RecentActivity() {
               status: conv.status || "completed"
             };
           })
-          .filter(msg => msg.message) // Filtrer les messages null ou undefined
+          .filter(msg => msg.message)
           .sort((a, b) => {
             const dateA = normalizeTimestamp(a.timestamp);
             const dateB = normalizeTimestamp(b.timestamp);
             return dateB - dateA;
           })
           .slice(0, 3);
-        
-        if (formattedMessages.length === 0) {
-          setError("Aucune conversation récente disponible");
-          setMessages([]);
-        } else {
-          setMessages(formattedMessages);
-          setCachedData('recentActivity', formattedMessages);
+
+        if (isSubscribed) {
+          if (formattedMessages.length === 0) {
+            setError("Aucune conversation récente disponible");
+            setMessages([]);
+          } else {
+            setMessages(formattedMessages);
+            setCachedData('recentActivity', formattedMessages);
+          }
         }
-        
-        setLoading(false);
       } catch (error) {
-        console.error('Erreur lors de la récupération des messages récents:', error);
-        // Si on a des données en cache, les garder en cas d'erreur
-        if (messages.length === 0) {
+        console.error('Erreur lors du chargement initial:', error);
+        if (isSubscribed) {
           setError("Impossible de charger les messages récents");
         }
-        setLoading(false);
+      } finally {
+        if (isSubscribed) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchRecentMessages();
-    
-    // Rafraîchir les données toutes les 30 secondes
-    const refreshInterval = setInterval(fetchRecentMessages, 30000);
-    
+    // Lancer le chargement initial et la configuration WebSocket
+    fetchInitialData();
+    setupWebSocket();
+
+    // Fonction de nettoyage
     return () => {
-      clearInterval(refreshInterval);
+      isSubscribed = false;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
     };
   }, []); // Dépendances vides pour ne s'exécuter qu'au montage
 
