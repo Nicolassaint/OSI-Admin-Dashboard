@@ -19,6 +19,7 @@ let ragDataCache = null;
 let lastFetchTime = 0;
 // La durée du cache est de 5 minutes car les mises à jour sont gérées par WebSocket
 const CACHE_DURATION = 300000; // 5 minutes en millisecondes
+const FETCH_TIMEOUT = 30000; // 30 secondes en millisecondes
 
 export default function RagDatabasePage() {
   const router = useRouter();
@@ -59,9 +60,15 @@ export default function RagDatabasePage() {
       setLoading(true);
       setApiError(null);
       
+      // Créer un AbortController avec un timeout plus long
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+      
       const response = await fetch(`/api/proxy/rag/data`, {
-        signal: AbortSignal.timeout(10000)
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
@@ -72,8 +79,9 @@ export default function RagDatabasePage() {
       // Formater les données pour l'affichage
       const formattedData = Array.isArray(data) ? data : [];
       
-      // Mettre à jour le cache
+      // Mettre à jour le cache et le timestamp
       setRagCache(formattedData);
+      lastFetchTime = Date.now();
       
       setRagData(formattedData);
       setFilteredData(formattedData);
@@ -81,13 +89,29 @@ export default function RagDatabasePage() {
       setLoading(false);
     } catch (error) {
       console.error('Erreur lors de la récupération des données RAG:', error);
-      setApiError("Impossible de charger les données. Veuillez vérifier que le backend est en cours d'exécution.");
+      
+      // Gérer spécifiquement l'erreur de timeout
+      if (error.name === 'AbortError') {
+        setApiError("Le chargement prend trop de temps. Veuillez réessayer.");
+      } else {
+        setApiError("Impossible de charger les données. Veuillez vérifier que le backend est en cours d'exécution.");
+      }
+      
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchRagData();
+    // Vérifier si le cache est valide avant de charger
+    const cachedData = getRagCache();
+    if (cachedData && !isRagCacheInvalid()) {
+      setRagData(cachedData);
+      setFilteredData(cachedData);
+      setTotalEntries(cachedData.length);
+      setLoading(false);
+    } else {
+      fetchRagData();
+    }
     
     // Ajouter un écouteur d'événement pour détecter quand l'utilisateur revient sur cette page
     const handleFocus = () => {
