@@ -139,17 +139,23 @@ export default function RagDatabasePage() {
       return;
     }
     
+    // Filtrer les données en fonction du terme de recherche
     const filtered = ragData.filter(entry => 
       (typeof entry?.name === 'string' ? entry.name.toLowerCase().includes(searchTermLower) : false) ||
       (typeof entry?.description === 'string' ? entry.description.toLowerCase().includes(searchTermLower) : false) ||
       (typeof entry?.search === 'string' ? entry.search.toLowerCase().includes(searchTermLower) : false) ||
       (typeof entry?.details?.label === 'string' ? entry.details.label.toLowerCase().includes(searchTermLower) : false) ||
+      (typeof entry?.details?.Label === 'string' ? entry.details.Label.toLowerCase().includes(searchTermLower) : false) ||
       entry?.details?.messages?.some(message => 
         typeof message?.label === 'string' ? message.label.toLowerCase().includes(searchTermLower) : false
+      ) ||
+      entry?.details?.Messages?.some(message => 
+        typeof message?.Label === 'string' ? message.Label.toLowerCase().includes(searchTermLower) : false
       )
     );
     
     setFilteredData(filtered);
+    console.log("filtered", filtered);
     setCurrentPage(1); // Réinitialiser la pagination lors d'une nouvelle recherche
   }, [searchTerm, ragData]);
 
