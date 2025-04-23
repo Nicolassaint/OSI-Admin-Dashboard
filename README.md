@@ -1,25 +1,25 @@
 ![image](/public/OSI_logo.png)
 
-# Dashboard Admin OSI
+# 🚀 Dashboard Admin OSI
 
 Ce projet est un tableau de bord d'administration pour le Chatbot OSI, développé avec Next.js.
 
-## Fonctionnalités
-- **Authentification** : Système de connexion sécurisé avec gestion des rôles (admin/utilisateur) via NextAuth.js.
-- **Interface responsive** : Design adaptatif pour une expérience fluide sur tous les appareils.
-- **Mode sombre/clair** : Thème personnalisable selon les préférences de l'utilisateur.
-- **Gestion des messages** : Interface pour visualiser et gérer les messages des utilisateurs.
-- **Base de données RAG** : Gestion complète des entrées de la base de connaissances (création, édition, suppression).
-- **Statistiques** : Visualisation des données d'utilisation avec des graphiques interactifs grâce à Recharts.
-- **Paramètres** : Configuration personnalisable du système pour les administrateurs.
+## ✨ Fonctionnalités
+- **🔐 Authentification** : Système de connexion sécurisé avec gestion des rôles (admin/utilisateur) via NextAuth.js.
+- **📱 Interface responsive** : Design adaptatif pour une expérience fluide sur tous les appareils.
+- **🌓 Mode sombre/clair** : Thème personnalisable selon les préférences de l'utilisateur.
+- **💬 Gestion des messages** : Interface pour visualiser et gérer les messages des utilisateurs.
+- **📚 Base de données RAG** : Gestion complète des entrées de la base de connaissances (création, édition, suppression).
+- **📊 Statistiques** : Visualisation des données d'utilisation avec des graphiques interactifs grâce à Recharts.
+- **⚙️ Paramètres** : Configuration personnalisable du système pour les administrateurs.
 
-## Démarrage rapide
+## 🏁 Démarrage rapide
 
-### Prérequis
+### 📋 Prérequis
 - Node.js (version recommandée : 18+)
 - npm ou yarn
 
-### Installation
+### 💿 Installation
 1. Clonez le dépôt :
    ```bash
    git clone https://github.com/nicolassaint/OSI-Admin-Dashboard.git
@@ -39,19 +39,19 @@ Ce projet est un tableau de bord d'administration pour le Chatbot OSI, développ
       API_TOKEN=osi_dashboard_secret_token_2024
       WEBSOCKET_TOKEN=osi_dashboard_secret_token_2024
    ```
-1. Lancez le serveur de développement :
+4. Lancez le serveur de développement :
    ```bash
    npm run dev
    # ou
    yarn dev
    ```
-2. Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur pour voir le tableau de bord.
+5. Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur pour voir le tableau de bord.
 
-## Déploiement
+## 🚀 Déploiement
 
 Pour déployer l'application, utilisez l'une des méthodes suivantes :
 
-### Méthode 1 : Utilisation de Vercel
+### 🔄 Méthode 1 : Utilisation de Vercel
 
 1. Installez Vercel CLI :
    ```bash
@@ -60,13 +60,13 @@ Pour déployer l'application, utilisez l'une des méthodes suivantes :
 2. Connectez-vous à Vercel :
    ```bash
    vercel login
-
+   ```
 3. Déployez l'application :
    ```bash
    vercel --prod
    ```
 
-### Méthode 2 : Utilisation de Docker
+### 🐳 Méthode 2 : Utilisation de Docker
 
 1. Installez Docker :
    ```bash
@@ -76,31 +76,29 @@ Pour déployer l'application, utilisez l'une des méthodes suivantes :
    ```bash
    docker build -t osi-admin-dashboard .
    ```
-
 3. Démarrez le conteneur Docker :
    ```bash
    docker run -d -p 3000:3000 osi-admin-dashboard
    ```
-
 4. Accédez à l'application :
    ```bash
    http://localhost:3000
    ```
 
-### Méthode 3 : script shell
+### 📜 Méthode 3 : script shell
 
 ```bash
-   ./deploy.sh start
-   ```
+./deploy.sh start
+```
 
-## Identifiants de test
+## 🔑 Identifiants de test
 Pour vous connecter à l'application, utilisez l'un des comptes suivants :
 
-### Administrateur :
+### 👑 Administrateur :
 - **Email** : admin
 - **Mot de passe** : admin
 
-## Structure du projet
+## 📁 Structure du projet
 ```
 /OSI-Admin-Dashboard
 │── src/app               # Pages et routes de l'application
@@ -118,13 +116,13 @@ Pour vous connecter à l'application, utilisez l'un des comptes suivants :
 │── README.md         # Documentation du projet
 ```
 
-## Technologies utilisées
-- **Next.js** : Framework React avec rendu côté serveur et statique.
-- **NextAuth.js** : Gestion de l'authentification et des sessions utilisateurs.
-- **Tailwind CSS** : Framework CSS pour un design moderne et responsive.
-- **Recharts** : Bibliothèque de visualisation de données interactive.
-- **React Markdown** : Rendu de contenu formaté en Markdown.
-- **MUI et Radix UI** : Composants React pour un design moderne et responsive.
+## 🛠️ Technologies utilisées
+- **⚛️ Next.js** : Framework React avec rendu côté serveur et statique.
+- **🔐 NextAuth.js** : Gestion de l'authentification et des sessions utilisateurs.
+- **🎨 Tailwind CSS** : Framework CSS pour un design moderne et responsive.
+- **📊 Recharts** : Bibliothèque de visualisation de données interactive.
+- **📝 React Markdown** : Rendu de contenu formaté en Markdown.
+- **🧩 MUI et Radix UI** : Composants React pour un design moderne et responsive.
 
-## Auteur
+## 👨‍💻 Auteur
 Ce projet a été développé par le Bercy HUB

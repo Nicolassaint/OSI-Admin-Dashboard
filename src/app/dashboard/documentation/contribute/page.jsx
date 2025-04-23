@@ -17,7 +17,7 @@ export default function ContributePage() {
           </Button>
         </Link>
         
-        <h1 className="text-3xl font-bold tracking-tight mb-2">Contribuer à la documentation</h1>
+        <h1 className="text-3xl font-bold tracking-tight mb-2">✏️ Contribuer à la documentation</h1>
         <p className="text-muted-foreground">
           Guide pour ajouter ou modifier la documentation du tableau de bord OSI Admin.
         </p>
@@ -26,7 +26,7 @@ export default function ContributePage() {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Structure de la documentation</CardTitle>
+            <CardTitle>📁 Structure de la documentation</CardTitle>
             <CardDescription>
               Comment les fichiers de documentation sont organisés
             </CardDescription>
@@ -37,7 +37,7 @@ export default function ContributePage() {
               Chaque fichier représente une page de documentation unique qui appartient à une catégorie.
             </p>
             
-            <h3 className="font-semibold mb-2">Catégories disponibles</h3>
+            <h3 className="font-semibold mb-2">📋 Catégories disponibles</h3>
             <ul className="list-disc pl-5 mb-4">
               {categories.map(category => (
                 <li key={category.id} className="mb-1">
@@ -51,7 +51,7 @@ export default function ContributePage() {
         
         <Card>
           <CardHeader>
-            <CardTitle>Création d'un nouveau document</CardTitle>
+            <CardTitle>📝 Création d'un nouveau document</CardTitle>
             <CardDescription>
               Comment ajouter une nouvelle page de documentation
             </CardDescription>
@@ -61,7 +61,7 @@ export default function ContributePage() {
               Pour créer un nouveau document, créez un fichier Markdown dans le dossier <code className="bg-muted px-1 py-0.5 rounded text-sm">src/docs/</code> avec l'extension <code className="bg-muted px-1 py-0.5 rounded text-sm">.md</code>.
             </p>
             
-            <h3 className="font-semibold mb-2">Structure du fichier</h3>
+            <h3 className="font-semibold mb-2">🔍 Structure du fichier</h3>
             <p className="mb-2">Chaque fichier doit commencer par un en-tête frontmatter délimité par <code className="bg-muted px-1 py-0.5 rounded text-sm">---</code> qui définit les métadonnées:</p>
             
             <div className="bg-muted rounded-md p-3 my-3 font-mono text-sm">
@@ -78,7 +78,7 @@ export default function ContributePage() {
               Paragraphe avec du texte...
             </div>
             
-            <h3 className="font-semibold mt-4 mb-2">Champs obligatoires:</h3>
+            <h3 className="font-semibold mt-4 mb-2">⚠️ Champs obligatoires:</h3>
             <ul className="list-disc pl-5">
               <li><code className="bg-muted px-1 py-0.5 rounded text-sm">title</code>: Titre du document</li>
               <li><code className="bg-muted px-1 py-0.5 rounded text-sm">category</code>: Identifiant de la catégorie (doit correspondre à l'une des catégories existantes)</li>
@@ -89,7 +89,7 @@ export default function ContributePage() {
         
         <Card>
           <CardHeader>
-            <CardTitle>Syntaxe Markdown</CardTitle>
+            <CardTitle>🖋️ Syntaxe Markdown</CardTitle>
             <CardDescription>
               Référence rapide de la syntaxe Markdown supportée
             </CardDescription>
@@ -97,7 +97,7 @@ export default function ContributePage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h3 className="font-semibold mb-2">Formatage de base</h3>
+                <h3 className="font-semibold mb-2">✨ Formatage de base</h3>
                 <ul className="space-y-2">
                   <li><code className="bg-muted px-1 py-0.5 rounded text-sm"># Titre</code> - Titre principal</li>
                   <li><code className="bg-muted px-1 py-0.5 rounded text-sm">## Sous-titre</code> - Sous-titre</li>
@@ -107,7 +107,7 @@ export default function ContributePage() {
               </div>
               
               <div>
-                <h3 className="font-semibold mb-2">Listes et liens</h3>
+                <h3 className="font-semibold mb-2">🔗 Listes et liens</h3>
                 <ul className="space-y-2">
                   <li><code className="bg-muted px-1 py-0.5 rounded text-sm">- Élément</code> - Liste à puces</li>
                   <li><code className="bg-muted px-1 py-0.5 rounded text-sm">1. Élément</code> - Liste numérotée</li>
@@ -115,6 +115,11 @@ export default function ContributePage() {
                   <li><code className="bg-muted px-1 py-0.5 rounded text-sm">```code```</code> - Bloc de code</li>
                 </ul>
               </div>
+            </div>
+            
+            <div className="mt-4 p-3 bg-primary/10 rounded-md">
+              <h3 className="font-semibold mb-2">💡 Conseil</h3>
+              <p>Pour rendre votre documentation plus attrayante, n'hésitez pas à utiliser des émojis! Ils rendent le texte plus agréable à lire et aident à mettre en évidence les points importants.</p>
             </div>
           </CardContent>
         </Card>

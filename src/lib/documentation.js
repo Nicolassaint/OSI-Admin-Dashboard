@@ -15,7 +15,7 @@ export const categories = [
   {
     id: "messages",
     name: "Messages",
-    description: "Comprenez comment gérer et analyser les conversations avec les utilisateurs."
+    description: "Guide complet pour gérer efficacement les conversations utilisateurs, analyser les métriques et optimiser les réponses."
   },
   {
     id: "rag-database",

@@ -3,6 +3,15 @@ import { DocItem } from "./doc-item";
 import { Accordion } from "@/components/ui/accordion";
 import { useEffect, useState } from "react";
 
+// Associer des émojis à chaque catégorie de documentation
+const categoryEmojis = {
+  "getting-started": "🚀",
+  "dashboard": "📊",
+  "messages": "💬",
+  "rag-database": "🧠",
+  "settings": "⚙️"
+};
+
 export function DocsCategory({ category, docs, targetDocId, isActive }) {
   const [openItems, setOpenItems] = useState([]);
   
@@ -16,7 +25,9 @@ export function DocsCategory({ category, docs, targetDocId, isActive }) {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold">{category.name}</h2>
+        <h2 className="text-2xl font-bold flex items-center">
+          {categoryEmojis[category.id] || '📄'} {category.name}
+        </h2>
         <p className="text-muted-foreground">{category.description}</p>
       </div>
 

@@ -1,14 +1,14 @@
 ---
-title: Gestion de la base de connaissances RAG
+title: Guide d'utilisation de la base RAG
 category: rag-database
-order: 1
+order: 3
 ---
 
-# Guide d'utilisation de la base RAG
+# 📘 Guide d'utilisation de la base RAG
 
 La base de données RAG (Retrieval-Augmented Generation) est le cœur de la connaissance de votre chatbot OSI. Elle contient tous les documents et informations que le système utilise pour générer des réponses précises et contextuelles.
 
-## Qu'est-ce que le RAG?
+## 🔍 Comprendre le RAG
 
 Le RAG est une approche qui combine:
 - La **récupération** d'informations pertinentes depuis une base de connaissances
@@ -16,7 +16,7 @@ Le RAG est une approche qui combine:
 
 Cette méthode permet au chatbot de fournir des réponses basées sur des informations spécifiques et à jour, plutôt que de se limiter aux connaissances générales avec lesquelles il a été entraîné.
 
-## Ajouter une nouvelle entrée
+## ➕ Ajouter une nouvelle entrée
 
 Pour ajouter une nouvelle entrée dans la base RAG:
 
@@ -33,7 +33,7 @@ Conseil: Préférez des documents courts et ciblés plutôt que de longs textes.
 Cela améliore la précision de la récupération et la qualité des réponses.
 ```
 
-## Modifier ou supprimer une entrée
+## ✏️ Modifier ou supprimer une entrée
 
 Pour modifier une entrée existante:
 1. Trouvez l'entrée dans la liste
@@ -45,7 +45,7 @@ Pour supprimer une entrée:
 2. Cliquez sur le bouton "Supprimer"
 3. Confirmez la suppression
 
-## Bonnes pratiques pour la base RAG
+## 💡 Bonnes pratiques pour la base RAG
 
 Pour optimiser les performances de votre chatbot:
 
@@ -55,7 +55,7 @@ Pour optimiser les performances de votre chatbot:
 - **Utilisez des étiquettes** cohérentes pour faciliter la gestion
 - **Testez la récupération** en posant des questions liées à vos documents
 
-## Format de texte supporté
+## 📝 Format de texte supporté
 
 La base RAG supporte le format Markdown pour structurer vos documents. Vous pouvez utiliser:
 

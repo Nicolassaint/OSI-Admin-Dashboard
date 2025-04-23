@@ -9,6 +9,15 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ExclamationTriangleIcon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import { Card, CardContent } from "@/components/ui/card";
 
+// Associer des émojis à chaque catégorie de documentation
+const categoryEmojis = {
+  "getting-started": "🚀",
+  "dashboard": "📊",
+  "messages": "💬",
+  "rag-database": "🧠",
+  "settings": "⚙️"
+};
+
 export default function DocumentationPage() {
   // État pour les catégories et documents
   const [activeCategory, setActiveCategory] = useState("getting-started");
@@ -193,14 +202,14 @@ export default function DocumentationPage() {
                 onClick={resetSearch}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                Retour à la documentation
+                ← Retour à la documentation
               </button>
             </div>
 
             {searchResults.length === 0 ? (
               <Card className="bg-muted/40">
                 <CardContent className="pt-6 text-center">
-                  <p>Aucun résultat ne correspond à votre recherche.</p>
+                  <p>🔍 Aucun résultat ne correspond à votre recherche.</p>
                   <p className="text-sm text-muted-foreground mt-2">
                     Essayez d'autres termes ou vérifiez l'orthographe.
                   </p>
@@ -209,7 +218,7 @@ export default function DocumentationPage() {
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
-                  {searchResults.length} document{searchResults.length > 1 ? 's' : ''} trouvé{searchResults.length > 1 ? 's' : ''}
+                  ✨ {searchResults.length} document{searchResults.length > 1 ? 's' : ''} trouvé{searchResults.length > 1 ? 's' : ''}
                 </p>
                 
                 <div className="space-y-4">
@@ -220,7 +229,7 @@ export default function DocumentationPage() {
                           className="bg-muted/40 px-4 py-2 text-sm text-muted-foreground border-b" 
                           style={{ cursor: 'pointer' }}
                         >
-                          {result.categoryName}
+                          {categoryEmojis[result.categoryId] || '📄'} {result.categoryName}
                         </div>
                         <div className="p-4">
                           <h3 className="text-lg font-medium mb-2">{result.title}</h3>
@@ -231,7 +240,7 @@ export default function DocumentationPage() {
                             className="mt-3 text-sm text-primary hover:underline"
                             onClick={() => viewFullDocument(result)}
                           >
-                            Voir le document complet
+                            👁️ Voir le document complet
                           </button>
                         </div>
                       </CardContent>
@@ -256,7 +265,7 @@ export default function DocumentationPage() {
                   value={category.id}
                   className="text-sm"
                 >
-                  {category.name}
+                  {categoryEmojis[category.id]} {category.name}
                 </TabsTrigger>
               ))}
             </TabsList>
