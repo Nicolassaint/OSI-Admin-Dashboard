@@ -16,6 +16,7 @@ import {
   SunIcon,
   MoonIcon,
   Cross2Icon,
+  QuestionMarkIcon,
 } from "@radix-ui/react-icons";
 import { signOut } from "next-auth/react";
 import { Suspense, useEffect } from "react";
@@ -135,6 +136,7 @@ export default function DashboardLayout({ children }) {
     { name: "Messages", href: "/dashboard/messages", icon: ChatBubbleIcon },
     { name: "Base RAG", href: "/dashboard/rag-database", icon: FileTextIcon },
     { name: "Paramètres", href: "/dashboard/settings", icon: GearIcon },
+    { name: "Documentation", href: "/dashboard/documentation", icon: QuestionMarkIcon },
   ];
 
   return (
