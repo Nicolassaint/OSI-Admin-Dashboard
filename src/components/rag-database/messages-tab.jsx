@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusIcon, TrashIcon } from "@radix-ui/react-icons";
 import MessageBubble from "./message-bubble";
 import MessageButton from "./message-button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { InfoIcon } from "lucide-react";
 
 export default function MessagesTab({ entry, setEntry }) {
   const [activeMessageIndex, setActiveMessageIndex] = useState(0);
@@ -146,16 +148,17 @@ export default function MessagesTab({ entry, setEntry }) {
   };
 
   return (
-    <>
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Messages</h2>
-        <Button onClick={addMessage}>
-          <PlusIcon className="mr-2 h-4 w-4" />
-          Ajouter un message
-        </Button>
-      </div>
-      
-      {entry.details.messages.length > 0 && (
+    <TooltipProvider>
+      <>
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Messages</h2>
+          <Button onClick={addMessage}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Ajouter un message
+          </Button>
+        </div>
+        
+        {entry.details.messages.length > 0 && (
   <div className="grid grid-cols-12 gap-4">
     <div className="col-span-3">
       <Card>
@@ -202,8 +205,16 @@ export default function MessagesTab({ entry, setEntry }) {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className="block text-sm font-medium mb-1 flex items-center gap-1">
                     Libellé {isNewEntry && <span className="text-red-500">*</span>}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Code du message, non transmis au LLM dans son prompt</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </label>
                   <input 
                     type="text" 
@@ -227,7 +238,17 @@ export default function MessagesTab({ entry, setEntry }) {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <label className="block text-sm font-medium mb-1 flex items-center gap-1">
+                    Description
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Description interne du message à titre informatif, non transmise au LLM</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </label>
                   <textarea 
                     className="w-full p-2 border rounded-md bg-background"
                     rows="2"
@@ -249,7 +270,18 @@ export default function MessagesTab({ entry, setEntry }) {
                 {/* Section des bulles */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-medium">Bulles</h3>
+                    <h3 className="text-lg font-medium flex items-center gap-1">
+                      Bulles
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Tous les textes des bulles sont fournis au LLM dans le prompt.</p>
+                          <p>Les images et les vidéos sont affichées à l'utilisateur après la bulle de réponse du LLM sauf si l'on appelle directement le message avec un bouton.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </h3>
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -306,7 +338,19 @@ export default function MessagesTab({ entry, setEntry }) {
                 {/* Section des boutons */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-medium">Boutons</h3>
+                    <h3 className="text-lg font-medium flex items-center gap-1">
+                      Boutons
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Les boutons peuvent être affichés de deux manières :</p>
+                          <p>1 - En cliquant sur un bouton, le message dans le lien contient d'autres boutons.</p>
+                          <p>2 - Si le LLM détecte que la première entrée message contient des boutons et que son score dépasse le seuil de 0.45, il affichera les boutons après réponse.</p>
+                        </TooltipContent>
+                      </Tooltip>  
+                    </h3>
                     <Button 
                       variant="outline" 
                       size="sm"
@@ -353,5 +397,6 @@ export default function MessagesTab({ entry, setEntry }) {
         </div>
       )}
     </>
+    </TooltipProvider>
   );
 } 
