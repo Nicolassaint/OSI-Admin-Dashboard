@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MagnifyingGlassIcon, PlusIcon, Pencil1Icon, TrashIcon } from "@radix-ui/react-icons";
+import { MagnifyingGlassIcon, PlusIcon, Pencil1Icon, TrashIcon, ChevronDownIcon } from "@radix-ui/react-icons";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
@@ -12,6 +12,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import MessagePreview from "@/components/rag-database/message-preview";
 import ReactMarkdown from 'react-markdown';
 import { getRagCache, setRagCache, invalidateRagCache, isRagCacheInvalid, resetRagCacheInvalidation } from "@/lib/cache";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 const ITEMS_PER_PAGE = 5; // Nombre d'entrées à afficher par page
 
 // Cache global pour stocker les données RAG entre les navigations
@@ -31,6 +32,9 @@ export default function RagDatabasePage() {
   const [filteredData, setFilteredData] = useState([]);
   const [totalEntries, setTotalEntries] = useState(0);
   const [apiError, setApiError] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(""); // Nouvelle variable d'état pour la catégorie sélectionnée
+  const [categories, setCategories] = useState([]); // Pour stocker la liste des catégories disponibles
+  const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false); // Pour contrôler l'état du popover de catégorie
 
   // Ajout d'un état pour gérer la confirmation de suppression
   const [deleteConfirmation, setDeleteConfirmation] = useState({ show: false, entryId: null });
@@ -128,36 +132,56 @@ export default function RagDatabasePage() {
     };
   }, [fetchRagData]);
 
-  // Effet pour filtrer les données quand le terme de recherche change
+  // Effet pour extraire les catégories uniques des données RAG
+  useEffect(() => {
+    if (!ragData || !ragData.length) return;
+    
+    // Extraire toutes les catégories uniques
+    const uniqueCategories = [...new Set(
+      ragData
+        .map(entry => entry.categorie)
+        .filter(category => category !== undefined && category !== null && category !== "")
+    )];
+    
+    // Trier les catégories par ordre alphabétique
+    uniqueCategories.sort();
+    
+    setCategories(uniqueCategories);
+  }, [ragData]);
+
+  // Effet modifié pour filtrer par terme de recherche ET catégorie
   useEffect(() => {
     if (!ragData) return;
     
     const searchTermLower = searchTerm?.toLowerCase() || "";
     
-    if (searchTermLower === "") {
-      setFilteredData(ragData);
-      return;
+    // Filtre initial par terme de recherche
+    let filtered = ragData;
+    
+    if (searchTermLower !== "") {
+      filtered = filtered.filter(entry => 
+        (typeof entry?.name === 'string' ? entry.name.toLowerCase().includes(searchTermLower) : false) ||
+        (typeof entry?.description === 'string' ? entry.description.toLowerCase().includes(searchTermLower) : false) ||
+        (typeof entry?.search === 'string' ? entry.search.toLowerCase().includes(searchTermLower) : false) ||
+        (typeof entry?.details?.label === 'string' ? entry.details.label.toLowerCase().includes(searchTermLower) : false) ||
+        (typeof entry?.details?.Label === 'string' ? entry.details.Label.toLowerCase().includes(searchTermLower) : false) ||
+        entry?.details?.messages?.some(message => 
+          typeof message?.label === 'string' ? message.label.toLowerCase().includes(searchTermLower) : false
+        ) ||
+        entry?.details?.Messages?.some(message => 
+          typeof message?.Label === 'string' ? message.Label.toLowerCase().includes(searchTermLower) : false
+        )
+      );
     }
     
-    // Filtrer les données en fonction du terme de recherche
-    const filtered = ragData.filter(entry => 
-      (typeof entry?.name === 'string' ? entry.name.toLowerCase().includes(searchTermLower) : false) ||
-      (typeof entry?.description === 'string' ? entry.description.toLowerCase().includes(searchTermLower) : false) ||
-      (typeof entry?.search === 'string' ? entry.search.toLowerCase().includes(searchTermLower) : false) ||
-      (typeof entry?.details?.label === 'string' ? entry.details.label.toLowerCase().includes(searchTermLower) : false) ||
-      (typeof entry?.details?.Label === 'string' ? entry.details.Label.toLowerCase().includes(searchTermLower) : false) ||
-      entry?.details?.messages?.some(message => 
-        typeof message?.label === 'string' ? message.label.toLowerCase().includes(searchTermLower) : false
-      ) ||
-      entry?.details?.Messages?.some(message => 
-        typeof message?.Label === 'string' ? message.Label.toLowerCase().includes(searchTermLower) : false
-      )
-    );
+    // Filtre supplémentaire par catégorie si une catégorie est sélectionnée
+    if (selectedCategory) {
+      filtered = filtered.filter(entry => entry.categorie === selectedCategory);
+    }
     
     setFilteredData(filtered);
-    console.log("filtered", filtered);
-    setCurrentPage(1); // Réinitialiser la pagination lors d'une nouvelle recherche
-  }, [searchTerm, ragData]);
+    setCurrentPage(1); // Réinitialiser la pagination lors d'un changement de filtre
+  }, [searchTerm, ragData, selectedCategory]);
 
   // Fonction pour réessayer le chargement
   const handleRetry = () => {
@@ -219,6 +243,13 @@ export default function RagDatabasePage() {
     currentPage * ITEMS_PER_PAGE
   );
 
+  // Fonction pour réinitialiser les filtres
+  const resetFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("");
+    setCurrentPage(1);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -234,10 +265,48 @@ export default function RagDatabasePage() {
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Base de données RAG</h1>
-        <Button onClick={() => router.push("/dashboard/rag-database/edit/new")}>
-          <PlusIcon className="h-4 w-4 mr-2" />
-          Nouvelle entrée
-        </Button>
+        <div className="flex items-center space-x-2">
+          {/* Filtre par catégorie */}
+          {categories.length > 0 && (
+            <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  {selectedCategory || "Catégorie"}
+                  <ChevronDownIcon className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0">
+                <div className="max-h-[300px] overflow-auto">
+                  <div
+                    className="px-2 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                    onClick={() => {
+                      setSelectedCategory("");
+                      setCategoryPopoverOpen(false);
+                    }}
+                  >
+                    Toutes les catégories
+                  </div>
+                  {categories.map((category) => (
+                    <div
+                      key={category}
+                      className="px-2 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                      onClick={() => {
+                        setSelectedCategory(category);
+                        setCategoryPopoverOpen(false);
+                      }}
+                    >
+                      {category}
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          <Button onClick={() => router.push("/dashboard/rag-database/edit/new")}>
+            <PlusIcon className="h-4 w-4 mr-2" />
+            Nouvelle entrée
+          </Button>
+        </div>
       </div>
 
       {apiError && (
@@ -258,8 +327,13 @@ export default function RagDatabasePage() {
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Rechercher</CardTitle>
+          {(searchTerm || selectedCategory) && (
+            <Button variant="ghost" size="sm" onClick={resetFilters}>
+              Réinitialiser les filtres
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <div className="relative">
@@ -275,8 +349,16 @@ export default function RagDatabasePage() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Résultats ({filteredData.length})</CardTitle>
+          {selectedCategory && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Filtré par catégorie :</span>
+              <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                {selectedCategory}
+              </span>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
@@ -298,6 +380,11 @@ export default function RagDatabasePage() {
                           {entry.details?.messages && entry.details.messages.length > 1 && (
                             <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                               Arbre de décision
+                            </span>
+                          )}
+                          {entry.categorie && (
+                            <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
+                              {entry.categorie}
                             </span>
                           )}
                         </div>

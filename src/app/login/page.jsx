@@ -112,10 +112,10 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground">
-                Email
+                Identifiant
               </label>
               <input
-                id="email"
+                id="Identifiant"
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
