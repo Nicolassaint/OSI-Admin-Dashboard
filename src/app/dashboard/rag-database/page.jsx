@@ -114,7 +114,7 @@ export default function RagDatabasePage() {
       setTotalEntries(cachedData.length);
       setLoading(false);
     } else {
-      fetchRagData();
+      fetchRagData(true); // Forcer le rechargement si le cache est invalide
     }
     
     // Ajouter un écouteur d'événement pour détecter quand l'utilisateur revient sur cette page

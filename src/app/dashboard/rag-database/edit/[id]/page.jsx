@@ -37,6 +37,7 @@ export default function EditRagEntryPage({ params }) {
         name: "Nouvelle entrée",
         description: "",
         search: "",
+        categorie: "",
         isDecisionTree: false,
         details: {
           label: "",
@@ -87,6 +88,7 @@ export default function EditRagEntryPage({ params }) {
         name: data.name || "",
         description: data.description || "",
         search: data.search || "",
+        categorie: data.categorie || "",
         isDecisionTree: Boolean(data.details?.Messages && data.details.Messages.length > 1),
         details: {
           label: data.details?.Label || "",
@@ -126,6 +128,7 @@ export default function EditRagEntryPage({ params }) {
         
         // Vérifier les champs généraux
         if (!entry.name) errors.push("Le nom est obligatoire");
+        if (!entry.categorie) errors.push("La catégorie est obligatoire");
         if (!entry.description) errors.push("La description est obligatoire");
         if (!entry.search) errors.push("Les termes de recherche sont obligatoires");
         
@@ -166,6 +169,7 @@ export default function EditRagEntryPage({ params }) {
         name: entry.name,
         description: entry.description,
         search: entry.search,
+        categorie: entry.categorie,
         details: {
           Label: entry.details.label,
           Messages: entry.details.messages.map(message => ({
@@ -208,8 +212,8 @@ export default function EditRagEntryPage({ params }) {
       // Invalider le cache global pour forcer un rechargement des données
       // lors du retour à la page principale
       if (typeof window !== 'undefined') {
-        // Utiliser une approche qui fonctionne même si le cache n'est pas directement accessible
-        window.localStorage.setItem('ragDataCacheInvalidated', Date.now().toString());
+        // Modifier cette ligne pour utiliser exactement 'true' comme valeur
+        window.localStorage.setItem('ragDataCacheInvalidated', 'true');
       }
       
       toast({
