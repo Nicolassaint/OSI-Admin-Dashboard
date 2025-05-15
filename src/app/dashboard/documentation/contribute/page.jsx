@@ -40,12 +40,25 @@ export default function ContributePage() {
             <h3 className="font-semibold mb-2">📋 Catégories disponibles</h3>
             <ul className="list-disc pl-5 mb-4">
               {categories.map(category => (
-                <li key={category.id} className="mb-1">
-                  <strong>{category.name}</strong> (<code className="bg-muted px-1 py-0.5 rounded text-xs">{category.id}</code>):
-                  {" "}{category.description}
+                <li key={category.id} className="mb-2">
+                  <div className="font-bold flex items-center">
+                    <code className="bg-primary/20 mr-2 px-2 py-0.5 rounded text-sm">{category.id}</code>
+                    <span>{category.name}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">{category.description}</p>
                 </li>
               ))}
             </ul>
+            
+            <div className="p-3 bg-amber-100/50 dark:bg-amber-950/50 rounded-md mt-4">
+              <h3 className="font-semibold mb-1 flex items-center">
+                <span className="mr-2">⚠️</span>Important
+              </h3>
+              <p className="text-sm">
+                Utilisez toujours l'identifiant technique (en code) dans le champ <code className="bg-muted px-1 py-0.5 rounded text-xs">category</code> du frontmatter.
+                Par exemple: <code className="bg-muted px-1 py-0.5 rounded text-xs">category: getting-started</code>
+              </p>
+            </div>
           </CardContent>
         </Card>
         

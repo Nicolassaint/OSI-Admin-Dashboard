@@ -1,7 +1,7 @@
 ---
-title: Vue d'ensemble du tableau de bord
-category: dashboard
-order: 1
+title: Introduction au tableau de bord
+category: getting-started
+order: 2
 ---
 
 # 📊 Comprendre le tableau de bord principal

@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 // Associer des émojis à chaque catégorie de documentation
 const categoryEmojis = {
   "getting-started": "🚀",
-  "dashboard": "📊",
+  "statistics": "📊",
   "messages": "💬",
   "rag-database": "🧠",
   "settings": "⚙️"

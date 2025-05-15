@@ -8,9 +8,9 @@ export const categories = [
     description: "Découvrez comment commencer avec le tableau de bord OSI Admin et utiliser ses fonctionnalités de base."
   },
   {
-    id: "dashboard",
-    name: "Tableau de bord",
-    description: "Guide détaillé du tableau de bord principal et des métriques disponibles."
+    id: "statistics",
+    name: "Statistiques",
+    description: "Guide détaillé des statistiques disponibles et comment les interpréter."
   },
   {
     id: "messages",
