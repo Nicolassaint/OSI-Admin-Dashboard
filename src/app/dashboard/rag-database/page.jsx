@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MagnifyingGlassIcon, PlusIcon, Pencil1Icon, TrashIcon, ChevronDownIcon } from "@radix-ui/react-icons";
+import { MagnifyingGlassIcon, PlusIcon, Pencil1Icon, TrashIcon, ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
@@ -13,7 +13,10 @@ import MessagePreview from "@/components/rag-database/message-preview";
 import ReactMarkdown from 'react-markdown';
 import { getRagCache, setRagCache, invalidateRagCache, isRagCacheInvalid, resetRagCacheInvalidation } from "@/lib/cache";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-const ITEMS_PER_PAGE = 5; // Nombre d'entrées à afficher par page
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Options pour le nombre d'entrées par page
+const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20, 50];
 
 // Cache global pour stocker les données RAG entre les navigations
 let ragDataCache = null;
@@ -28,6 +31,7 @@ export default function RagDatabasePage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5); // Nouvel état pour le nombre d'entrées par page
   const [ragData, setRagData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [totalEntries, setTotalEntries] = useState(0);
@@ -35,10 +39,60 @@ export default function RagDatabasePage() {
   const [selectedCategory, setSelectedCategory] = useState(""); // Nouvelle variable d'état pour la catégorie sélectionnée
   const [categories, setCategories] = useState([]); // Pour stocker la liste des catégories disponibles
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false); // Pour contrôler l'état du popover de catégorie
+  const [showScrollToTop, setShowScrollToTop] = useState(false); // État pour afficher le bouton retour en haut
 
   // Ajout d'un état pour gérer la confirmation de suppression
   const [deleteConfirmation, setDeleteConfirmation] = useState({ show: false, entryId: null });
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Fonction pour gérer le scroll et afficher/masquer le bouton retour en haut
+  useEffect(() => {
+    const handleScroll = (event) => {
+      // Le scroll se fait dans le conteneur main du layout, pas sur window
+      const target = event.target;
+      const scrolled = target.scrollTop;
+      setShowScrollToTop(scrolled > 300);
+    };
+
+    // Trouver le conteneur de scroll principal (main avec overflow-y-auto)
+    const mainContainer = document.querySelector('main[class*="overflow-y-auto"]');
+    
+    if (mainContainer) {
+      mainContainer.addEventListener('scroll', handleScroll);
+      
+      return () => {
+        mainContainer.removeEventListener('scroll', handleScroll);
+      };
+    } else {
+      // Fallback sur window si le main n'est pas trouvé
+      const windowScrollHandler = () => {
+        const scrolled = window.scrollY || document.documentElement.scrollTop;
+        setShowScrollToTop(scrolled > 300);
+      };
+      
+      window.addEventListener('scroll', windowScrollHandler);
+      return () => window.removeEventListener('scroll', windowScrollHandler);
+    }
+  }, []);
+
+  // Fonction pour retourner en haut de page
+  const scrollToTop = () => {
+    // Trouver le conteneur de scroll principal
+    const mainContainer = document.querySelector('main[class*="overflow-y-auto"]');
+    
+    if (mainContainer) {
+      mainContainer.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    } else {
+      // Fallback sur window
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   // Fonction pour récupérer les données depuis l'API backend
   const fetchRagData = useCallback(async (forceRefresh = false) => {
@@ -183,6 +237,11 @@ export default function RagDatabasePage() {
     setCurrentPage(1); // Réinitialiser la pagination lors d'un changement de filtre
   }, [searchTerm, ragData, selectedCategory]);
 
+  // Réinitialiser la page courante quand le nombre d'entrées par page change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
+
   // Fonction pour réessayer le chargement
   const handleRetry = () => {
     fetchRagData(true); // Force le rechargement des données
@@ -237,10 +296,10 @@ export default function RagDatabasePage() {
   };
 
   // Calculer la pagination
-  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const paginatedEntries = filteredData.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   // Fonction pour réinitialiser les filtres
@@ -351,14 +410,32 @@ export default function RagDatabasePage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Résultats ({filteredData.length})</CardTitle>
-          {selectedCategory && (
+          <div className="flex items-center gap-4">
+            {selectedCategory && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Filtré par catégorie :</span>
+                <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  {selectedCategory}
+                </span>
+              </div>
+            )}
+            {/* Sélecteur du nombre d'entrées par page */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Filtré par catégorie :</span>
-              <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                {selectedCategory}
-              </span>
+              <span className="text-sm text-muted-foreground">Entrées par page :</span>
+              <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(parseInt(value))}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ITEMS_PER_PAGE_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option.toString()}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
@@ -458,6 +535,24 @@ export default function RagDatabasePage() {
           </div>
         </CardContent>
       </Card>
+
+            {/* Bouton retour en haut */}
+      <div
+        className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ease-in-out ${
+          showScrollToTop
+            ? 'opacity-100 translate-y-0 scale-100'
+            : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
+        }`}
+      >
+        <Button
+          onClick={scrollToTop}
+          className="rounded-full w-12 h-12 shadow-lg bg-primary hover:bg-primary/90 hover:scale-110 transition-transform duration-200 ease-in-out backdrop-blur-sm"
+          size="icon"
+          title="Retour en haut"
+        >
+          <ChevronUpIcon className="h-5 w-5" />
+        </Button>
+      </div>
 
       {/* Composant de confirmation de suppression */}
       <ConfirmationDialog
