@@ -6,6 +6,8 @@ import React from "react";
 import { MessageList, MessageFilter, MessageSearch, MessageSort, MessageEvaluationFilter } from "@/components/messages";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ItemsPerPageSelector } from "@/components/ui/items-per-page-selector";
+import { ScrollToTopButton } from "@/components/ui/scroll-to-top-button";
 import { debounce } from "lodash";
 
 // Cache global pour stocker les messages entre les navigations
@@ -26,6 +28,7 @@ export default function MessagesPage() {
   const [error, setError] = useState(null);
   const [sortOrder, setSortOrder] = useState("desc");
   const [wsConnected, setWsConnected] = useState(false);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -41,7 +44,7 @@ export default function MessagesPage() {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: pagination.itemsPerPage.toString(),
+        limit: itemsPerPage.toString(),
         sort: sortOrder,
         filter: filter
       });
@@ -85,12 +88,17 @@ export default function MessagesPage() {
     } finally {
       setLoading(false);
     }
-  }, [sortOrder, filter, searchTerm, pagination.itemsPerPage]);
+  }, [sortOrder, filter, searchTerm, itemsPerPage]);
 
   // Effet pour recharger les messages quand les filtres changent
   useEffect(() => {
     fetchConversations(1, true);
   }, [fetchConversations, sortOrder, filter, searchTerm]);
+
+  // Réinitialiser la page courante quand le nombre d'entrées par page change
+  useEffect(() => {
+    fetchConversations(1, true);
+  }, [itemsPerPage]);
 
   // Gestionnaire de changement de page
   const handlePageChange = useCallback((newPage) => {
@@ -482,8 +490,12 @@ export default function MessagesPage() {
 
       {/* Liste des messages */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Liste des messages ({pagination.totalItems})</CardTitle>
+          <ItemsPerPageSelector 
+            itemsPerPage={itemsPerPage} 
+            onItemsPerPageChange={setItemsPerPage} 
+          />
         </CardHeader>
         <CardContent>
           <MessageList
@@ -499,6 +511,8 @@ export default function MessagesPage() {
           />
         </CardContent>
       </Card>
+
+      <ScrollToTopButton />
     </div>
   );
 }

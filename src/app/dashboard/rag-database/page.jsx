@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MagnifyingGlassIcon, PlusIcon, Pencil1Icon, TrashIcon, ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
+import { MagnifyingGlassIcon, PlusIcon, Pencil1Icon, TrashIcon, ChevronDownIcon } from "@radix-ui/react-icons";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
@@ -13,10 +13,8 @@ import MessagePreview from "@/components/rag-database/message-preview";
 import ReactMarkdown from 'react-markdown';
 import { getRagCache, setRagCache, invalidateRagCache, isRagCacheInvalid, resetRagCacheInvalidation } from "@/lib/cache";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-// Options pour le nombre d'entrées par page
-const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20, 50];
+import { ItemsPerPageSelector } from "@/components/ui/items-per-page-selector";
+import { ScrollToTopButton } from "@/components/ui/scroll-to-top-button";
 
 // Cache global pour stocker les données RAG entre les navigations
 let ragDataCache = null;
@@ -39,60 +37,12 @@ export default function RagDatabasePage() {
   const [selectedCategory, setSelectedCategory] = useState(""); // Nouvelle variable d'état pour la catégorie sélectionnée
   const [categories, setCategories] = useState([]); // Pour stocker la liste des catégories disponibles
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false); // Pour contrôler l'état du popover de catégorie
-  const [showScrollToTop, setShowScrollToTop] = useState(false); // État pour afficher le bouton retour en haut
 
   // Ajout d'un état pour gérer la confirmation de suppression
   const [deleteConfirmation, setDeleteConfirmation] = useState({ show: false, entryId: null });
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Fonction pour gérer le scroll et afficher/masquer le bouton retour en haut
-  useEffect(() => {
-    const handleScroll = (event) => {
-      // Le scroll se fait dans le conteneur main du layout, pas sur window
-      const target = event.target;
-      const scrolled = target.scrollTop;
-      setShowScrollToTop(scrolled > 300);
-    };
 
-    // Trouver le conteneur de scroll principal (main avec overflow-y-auto)
-    const mainContainer = document.querySelector('main[class*="overflow-y-auto"]');
-    
-    if (mainContainer) {
-      mainContainer.addEventListener('scroll', handleScroll);
-      
-      return () => {
-        mainContainer.removeEventListener('scroll', handleScroll);
-      };
-    } else {
-      // Fallback sur window si le main n'est pas trouvé
-      const windowScrollHandler = () => {
-        const scrolled = window.scrollY || document.documentElement.scrollTop;
-        setShowScrollToTop(scrolled > 300);
-      };
-      
-      window.addEventListener('scroll', windowScrollHandler);
-      return () => window.removeEventListener('scroll', windowScrollHandler);
-    }
-  }, []);
-
-  // Fonction pour retourner en haut de page
-  const scrollToTop = () => {
-    // Trouver le conteneur de scroll principal
-    const mainContainer = document.querySelector('main[class*="overflow-y-auto"]');
-    
-    if (mainContainer) {
-      mainContainer.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
-    } else {
-      // Fallback sur window
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
-    }
-  };
 
   // Fonction pour récupérer les données depuis l'API backend
   const fetchRagData = useCallback(async (forceRefresh = false) => {
@@ -419,22 +369,10 @@ export default function RagDatabasePage() {
                 </span>
               </div>
             )}
-            {/* Sélecteur du nombre d'entrées par page */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Entrées par page :</span>
-              <Select value={itemsPerPage.toString()} onValueChange={(value) => setItemsPerPage(parseInt(value))}>
-                <SelectTrigger className="w-20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ITEMS_PER_PAGE_OPTIONS.map((option) => (
-                    <SelectItem key={option} value={option.toString()}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <ItemsPerPageSelector 
+              itemsPerPage={itemsPerPage} 
+              onItemsPerPageChange={setItemsPerPage} 
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -536,23 +474,7 @@ export default function RagDatabasePage() {
         </CardContent>
       </Card>
 
-            {/* Bouton retour en haut */}
-      <div
-        className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ease-in-out ${
-          showScrollToTop
-            ? 'opacity-100 translate-y-0 scale-100'
-            : 'opacity-0 translate-y-4 scale-95 pointer-events-none'
-        }`}
-      >
-        <Button
-          onClick={scrollToTop}
-          className="rounded-full w-12 h-12 shadow-lg bg-primary hover:bg-primary/90 hover:scale-110 transition-transform duration-200 ease-in-out backdrop-blur-sm"
-          size="icon"
-          title="Retour en haut"
-        >
-          <ChevronUpIcon className="h-5 w-5" />
-        </Button>
-      </div>
+      <ScrollToTopButton />
 
       {/* Composant de confirmation de suppression */}
       <ConfirmationDialog
