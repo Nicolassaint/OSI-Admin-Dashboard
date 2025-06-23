@@ -25,6 +25,7 @@ export default function MessagesPage() {
   const [filter, setFilter] = useState("all");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState(null);
   const [sortOrder, setSortOrder] = useState("desc");
   const [wsConnected, setWsConnected] = useState(false);
@@ -37,8 +38,13 @@ export default function MessagesPage() {
   });
 
   // Fonction pour récupérer les conversations avec pagination
-  const fetchConversations = useCallback(async (page = 1, forceRefresh = false) => {
-    setLoading(true);
+  const fetchConversations = useCallback(async (page = 1, forceRefresh = false, isSearch = false) => {
+    // Utiliser searchLoading pour les recherches, loading pour le chargement initial
+    if (isSearch) {
+      setSearchLoading(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     
     try {
@@ -86,32 +92,43 @@ export default function MessagesPage() {
         setError(`Impossible de charger les messages: ${err.message}`);
       }
     } finally {
-      setLoading(false);
+      if (isSearch) {
+        setSearchLoading(false);
+      } else {
+        setLoading(false);
+      }
     }
   }, [sortOrder, filter, searchTerm, itemsPerPage]);
 
-  // Effet pour recharger les messages quand les filtres changent
+  // Effet pour recharger les messages quand les filtres changent (sans searchTerm)
   useEffect(() => {
     fetchConversations(1, true);
-  }, [fetchConversations, sortOrder, filter, searchTerm]);
+  }, [sortOrder, filter, itemsPerPage]);
 
-  // Réinitialiser la page courante quand le nombre d'entrées par page change
+  // Charger les données initiales
   useEffect(() => {
     fetchConversations(1, true);
-  }, [itemsPerPage]);
+  }, []);
 
   // Gestionnaire de changement de page
   const handlePageChange = useCallback((newPage) => {
-    fetchConversations(newPage);
-  }, [fetchConversations]);
+    const isSearch = searchTerm.length > 0;
+    fetchConversations(newPage, false, isSearch);
+  }, [fetchConversations, searchTerm]);
 
-  // Optimiser la recherche avec debounce
-  const debouncedSearch = useMemo(
-    () => debounce((value) => {
-      setSearchTerm(value);
-    }, 300),
-    []
-  );
+  // Gestionnaire de recherche
+  const handleSearch = useCallback((searchValue) => {
+    setSearchTerm(searchValue);
+    // Si la recherche est vide, recharger sans le terme de recherche
+    if (!searchValue || searchValue.trim() === "") {
+      fetchConversations(1, true, false);
+    } else {
+      // Sinon, faire une recherche
+      setTimeout(() => {
+        fetchConversations(1, true, true);
+      }, 0);
+    }
+  }, [fetchConversations]);
 
   // Configurer la connexion WebSocket
   useEffect(() => {
@@ -355,7 +372,8 @@ export default function MessagesPage() {
 
   // Fonction pour réessayer le chargement
   const handleRetry = () => {
-    fetchConversations(1, true); // Force le rechargement des données
+    const isSearch = searchTerm.length > 0;
+    fetchConversations(1, true, isSearch); // Force le rechargement des données
   };
 
   // Optimiser la fonction updateMessageStatus avec debounce
@@ -462,7 +480,11 @@ export default function MessagesPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
         <div className="flex space-x-2">
-          <MessageSearch searchTerm={searchTerm} setSearchTerm={debouncedSearch} />
+          <MessageSearch 
+            searchTerm={searchTerm} 
+            onSearch={handleSearch} 
+            loading={searchLoading}
+          />
           <MessageFilter filter={filter} setFilter={setFilter} />
           <MessageSort sortOrder={sortOrder} setSortOrder={setSortOrder} />
         </div>
