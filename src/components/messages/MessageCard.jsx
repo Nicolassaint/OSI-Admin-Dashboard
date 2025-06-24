@@ -89,8 +89,8 @@ export default function MessageCard({
       // console.log(`Récupération des métriques pour la conversation ${message.id}`);
       const response = await fetch(`/api/proxy/conversations/${message.id}`, {
         cache: 'no-store',
-        // Ajouter un timeout pour éviter les requêtes bloquées
-        signal: AbortSignal.timeout(5000)
+        // Augmenter le timeout pour éviter les requêtes bloquées
+        signal: AbortSignal.timeout(15000) // Augmenter de 5s à 15s
       });
       
       if (!response.ok) {
@@ -111,7 +111,11 @@ export default function MessageCard({
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des métriques RAG:", error);
-      setMetricsError("Impossible de récupérer les métriques RAG. Veuillez réessayer plus tard.");
+      if (error.name === 'AbortError') {
+        setMetricsError("La récupération des métriques a expiré. Le serveur est peut-être surchargé, veuillez réessayer.");
+      } else {
+        setMetricsError("Impossible de récupérer les métriques RAG. Veuillez réessayer plus tard.");
+      }
     } finally {
       setIsLoadingMetrics(false);
       setShowRagMetrics(true);
@@ -124,7 +128,7 @@ export default function MessageCard({
       try {
         const response = await fetch(`/api/proxy/conversations/${message.id}`, {
           cache: 'no-store',
-          signal: AbortSignal.timeout(5000)
+          signal: AbortSignal.timeout(10000) // Timeout plus court pour le préchargement
         });
         
         if (response.ok) {
@@ -135,6 +139,7 @@ export default function MessageCard({
           }
         }
       } catch (error) {
+        // Ne pas afficher d'erreur pour le préchargement
         console.error("Erreur lors du préchargement des métriques:", error);
       }
     }

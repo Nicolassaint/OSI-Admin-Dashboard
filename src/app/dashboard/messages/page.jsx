@@ -38,7 +38,7 @@ export default function MessagesPage() {
   });
 
   // Fonction pour récupérer les conversations avec pagination
-  const fetchConversations = useCallback(async (page = 1, forceRefresh = false, isSearch = false) => {
+  const fetchConversations = useCallback(async (page = 1, forceRefresh = false, isSearch = false, customSearchTerm = null) => {
     // Utiliser searchLoading pour les recherches, loading pour le chargement initial
     if (isSearch) {
       setSearchLoading(true);
@@ -55,8 +55,10 @@ export default function MessagesPage() {
         filter: filter
       });
 
-      if (searchTerm) {
-        params.append('search', searchTerm);
+      // Utiliser customSearchTerm si fourni, sinon utiliser searchTerm
+      const termToUse = customSearchTerm !== null ? customSearchTerm : searchTerm;
+      if (termToUse) {
+        params.append('search', termToUse);
       }
 
       console.log('Fetching conversations with params:', params.toString());
@@ -65,7 +67,7 @@ export default function MessagesPage() {
         headers: {
           'Content-Type': 'application/json'
         },
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(30000), // Augmenter le timeout à 30 secondes
         cache: 'no-store'
       });
       
@@ -85,7 +87,7 @@ export default function MessagesPage() {
       console.error("Erreur lors de la récupération des conversations:", err);
       
       if (err.name === 'AbortError') {
-        setError("La requête a expiré. Le serveur API est peut-être indisponible ou surchargé.");
+        setError("La requête a expiré. Le serveur API est peut-être indisponible ou surchargé. Veuillez réessayer.");
       } else if (err.name === 'TypeError' || err.message.includes('Failed to fetch')) {
         setError("Impossible de se connecter au backend. Veuillez vérifier votre connexion réseau.");
       } else {
@@ -121,12 +123,10 @@ export default function MessagesPage() {
     setSearchTerm(searchValue);
     // Si la recherche est vide, recharger sans le terme de recherche
     if (!searchValue || searchValue.trim() === "") {
-      fetchConversations(1, true, false);
+      fetchConversations(1, true, false, ""); // Passer explicitement une chaîne vide
     } else {
-      // Sinon, faire une recherche
-      setTimeout(() => {
-        fetchConversations(1, true, true);
-      }, 0);
+      // Passer directement la valeur de recherche pour éviter le problème d'asynchrone
+      fetchConversations(1, true, true, searchValue.trim());
     }
   }, [fetchConversations]);
 
@@ -335,7 +335,8 @@ export default function MessagesPage() {
           'Content-Type': 'application/json'
         },
         cache: 'force-cache',
-        next: { revalidate: 300 }
+        next: { revalidate: 300 },
+        signal: AbortSignal.timeout(15000) // Augmenter le timeout pour les détails
       });
       
       if (!response.ok) return null;
@@ -398,13 +399,14 @@ export default function MessagesPage() {
           return updatedMessages;
         });
 
-        // Appel API en arrière-plan
+        // Appel API en arrière-plan avec timeout augmenté
         const response = await fetch(`/api/proxy/conversations/${id}/status`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ status })
+          body: JSON.stringify({ status }),
+          signal: AbortSignal.timeout(15000) // Augmenter le timeout
         });
         
         if (!response.ok) {
@@ -448,7 +450,8 @@ export default function MessagesPage() {
     debounce(async (id) => {
       try {
         const response = await fetch(`/api/proxy/conversations/${id}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          signal: AbortSignal.timeout(15000) // Augmenter le timeout
         });
         
         if (!response.ok) {

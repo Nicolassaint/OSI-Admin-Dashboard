@@ -151,7 +151,7 @@ export function RecentActivity() {
           headers: {
             'Content-Type': 'application/json'
           },
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.timeout(20000),
           cache: 'no-store'
         });
         
