@@ -13,7 +13,8 @@ export default function MessageList({
   onArchive,
   onEditHover,
   pagination,
-  onPageChange
+  onPageChange,
+  highlightedMessageId
 }) {
   // Formater la date
   const formatDate = (dateString) => {
@@ -86,6 +87,7 @@ export default function MessageList({
             onArchive={onArchive}
             formatDate={formatDate}
             onEditHover={onEditHover}
+            isHighlighted={highlightedMessageId === message.id}
           >
             <div className="flex space-x-2">
               {message.status !== 'resolu' && message.status !== 'archive' && (

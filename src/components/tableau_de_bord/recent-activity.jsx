@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getCachedData, setCachedData } from "@/lib/cache";
+import { useRouter } from "next/navigation";
 
 // Fonction pour normaliser les timestamps
 const normalizeTimestamp = (timestamp) => {
@@ -40,6 +41,7 @@ export function RecentActivity() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const router = useRouter();
 
   useEffect(() => {
     let isSubscribed = true; // Pour éviter les mises à jour si le composant est démonté
@@ -265,6 +267,11 @@ export function RecentActivity() {
     }
   };
 
+  // Fonction pour naviguer vers le message dans la page des messages
+  const handleMessageClick = (messageId) => {
+    router.push(`/dashboard/messages?messageId=${messageId}`);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -283,7 +290,12 @@ export function RecentActivity() {
             <p className="text-sm text-muted-foreground">Aucune interaction récente</p>
           ) : (
             messages.map((message) => (
-              <div key={`message-${message.id}`} className="flex items-start gap-4 rounded-lg border p-3">
+              <div 
+                key={`message-${message.id}`} 
+                className="flex items-start gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors duration-200"
+                onClick={() => handleMessageClick(message.id)}
+                title="Cliquer pour voir ce message dans la page des messages"
+              >
                 <div className="space-y-1">
                   <p className="text-sm font-medium truncate max-w-[300px]">{message.message}</p>
                   <p className="text-sm text-muted-foreground">

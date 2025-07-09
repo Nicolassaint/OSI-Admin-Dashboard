@@ -10,7 +10,8 @@ export default function MessageCard({
   onMarkAsResolved, 
   onDelete, 
   formatDate,
-  onEditHover
+  onEditHover,
+  isHighlighted
 }) {
   // Ajouter des logs pour le débogage
   // console.log('MessageCard received message:', JSON.stringify(message, null, 2));
@@ -200,7 +201,14 @@ export default function MessageCard({
   };
 
   return (
-    <div className="border rounded-lg p-4 space-y-3">
+    <div 
+      data-message-id={message.id}
+      className={`border rounded-lg p-4 space-y-3 transition-all duration-300 ${
+        isHighlighted 
+          ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950/20 shadow-md' 
+          : ''
+      }`}
+    >
       <div className="flex justify-between items-start">
         <div>
           <p className="font-medium">{message.user || "Utilisateur"}</p>
