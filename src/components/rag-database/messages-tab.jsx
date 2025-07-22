@@ -6,36 +6,70 @@ import MessageBubble from "./message-bubble";
 import MessageButton from "./message-button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { InfoIcon } from "lucide-react";
+import { generateUniqueMessageIdFromAPI } from "@/lib/message-id-generator";
 
 export default function MessagesTab({ entry, setEntry }) {
   const [activeMessageIndex, setActiveMessageIndex] = useState(0);
   const [isNewEntry, setIsNewEntry] = useState(false);
 
-  const addMessage = () => {
-    const newMessages = [...entry.details.messages, {
-      label: `Message ${entry.details.messages.length + 1}`,
-      description: "",
-      bubbles: [{
-        text: "",
-        image: "",
-        video: "",
-        order: 0
-      }],
-      buttons: []
-    }];
-    
-    setEntry({
-      ...entry,
-      isDecisionTree: newMessages.length > 1,
-      details: {
-        ...entry.details,
-        messages: newMessages
-      }
-    });
-    
-    // Activer le nouvel onglet de message
-    setActiveMessageIndex(newMessages.length - 1);
-    setIsNewEntry(true);
+  const addMessage = async () => {
+    try {
+      const messageId = await generateUniqueMessageIdFromAPI();
+      
+      const newMessages = [...entry.details.messages, {
+        label: messageId,
+        description: "",
+        bubbles: [{
+          text: "",
+          image: "",
+          video: "",
+          order: 0
+        }],
+        buttons: []
+      }];
+      
+      setEntry({
+        ...entry,
+        isDecisionTree: newMessages.length > 1,
+        details: {
+          ...entry.details,
+          messages: newMessages
+        }
+      });
+      
+      // Activer le nouvel onglet de message
+      setActiveMessageIndex(newMessages.length - 1);
+      setIsNewEntry(true);
+    } catch (error) {
+      console.error('Erreur lors de la génération de l\'ID de message:', error);
+      // Fallback en cas d'erreur
+      const fallbackId = `msg${Date.now().toString().slice(-6).padStart(6, '0')}`;
+      
+      const newMessages = [...entry.details.messages, {
+        label: fallbackId,
+        description: "",
+        bubbles: [{
+          text: "",
+          image: "",
+          video: "",
+          order: 0
+        }],
+        buttons: []
+      }];
+      
+      setEntry({
+        ...entry,
+        isDecisionTree: newMessages.length > 1,
+        details: {
+          ...entry.details,
+          messages: newMessages
+        }
+      });
+      
+      // Activer le nouvel onglet de message
+      setActiveMessageIndex(newMessages.length - 1);
+      setIsNewEntry(true);
+    }
   };
 
   const addBubble = (messageIndex) => {

@@ -9,6 +9,7 @@ import React from 'react';
 import { toast } from "sonner";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { generateUniqueMessageIdFromAPI } from "@/lib/message-id-generator";
 
 // Référence au cache global défini dans la page principale
 // Cette variable sera undefined dans ce module, mais c'est normal
@@ -31,30 +32,63 @@ export default function EditRagEntryPage({ params }) {
 
   useEffect(() => {
     if (isNewEntry) {
-      // Créer une nouvelle entrée vide
-      setEntry({
-        id: `entry_${Date.now()}`,
-        name: "Nouvelle entrée",
-        description: "",
-        search: "",
-        categorie: "",
-        isDecisionTree: false,
-        details: {
-          label: "",
-          messages: [{
-            label: "Message principal",
+      // Créer une nouvelle entrée vide avec ID généré automatiquement
+      const initializeNewEntry = async () => {
+        try {
+          const messageId = await generateUniqueMessageIdFromAPI();
+          setEntry({
+            id: `entry_${Date.now()}`,
+            name: "Nouvelle entrée",
             description: "",
-            bubbles: [{
-              text: "",
-              image: "",
-              video: "",
-              order: 0
-            }],
-            buttons: []
-          }]
+            search: "",
+            categorie: "",
+            isDecisionTree: false,
+            details: {
+              label: "",
+              messages: [{
+                label: messageId,
+                description: "",
+                bubbles: [{
+                  text: "",
+                  image: "",
+                  video: "",
+                  order: 0
+                }],
+                buttons: []
+              }]
+            }
+          });
+        } catch (error) {
+          console.error('Erreur lors de la génération de l\'ID:', error);
+          // Fallback en cas d'erreur
+          setEntry({
+            id: `entry_${Date.now()}`,
+            name: "Nouvelle entrée",
+            description: "",
+            search: "",
+            categorie: "",
+            isDecisionTree: false,
+            details: {
+              label: "",
+              messages: [{
+                label: `msg${Date.now().toString().slice(-6).padStart(6, '0')}`,
+                description: "",
+                bubbles: [{
+                  text: "",
+                  image: "",
+                  video: "",
+                  order: 0
+                }],
+                buttons: []
+              }]
+            }
+          });
+        } finally {
+          setLoading(false);
         }
-      });
-      setLoading(false);
+      };
+      
+      initializeNewEntry();
     } else {
       // Charger les données depuis l'API
       fetchEntry();
