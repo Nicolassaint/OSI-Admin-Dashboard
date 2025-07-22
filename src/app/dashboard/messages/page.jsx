@@ -51,11 +51,14 @@ export default function MessagesPage() {
     setError(null);
     
     try {
+      // Gérer le filtre spécial "en_attente_negatif" côté frontend
+      const backendFilter = filter === 'en_attente_negatif' ? 'en_attente' : filter;
+      
       const params = new URLSearchParams({
         page: page.toString(),
         limit: itemsPerPage.toString(),
         sort: sortOrder,
-        filter: filter
+        filter: backendFilter
       });
 
       // Utiliser customSearchTerm si fourni, sinon utiliser searchTerm
@@ -82,9 +85,26 @@ export default function MessagesPage() {
       const data = await response.json();
       // console.log('Received data:', data);
       
-      // Mettre à jour les messages et la pagination
-      setMessages(data.conversations);
-      setPagination(data.pagination);
+      // Filtrer côté frontend pour le cas spécial "en_attente_negatif"
+      let filteredConversations = data.conversations;
+      if (filter === 'en_attente_negatif') {
+        filteredConversations = data.conversations.filter(msg => 
+          msg.status === 'en_attente' && msg.evaluation === 0
+        );
+        
+        // Mettre à jour la pagination pour refléter le nombre réel de messages filtrés
+        const newPagination = {
+          ...data.pagination,
+          totalItems: filteredConversations.length,
+          totalPages: Math.ceil(filteredConversations.length / itemsPerPage)
+        };
+        setPagination(newPagination);
+      } else {
+        setPagination(data.pagination);
+      }
+      
+      // Mettre à jour les messages
+      setMessages(filteredConversations);
       
     } catch (err) {
       console.error("Erreur lors de la récupération des conversations:", err);
