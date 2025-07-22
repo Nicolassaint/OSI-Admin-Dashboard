@@ -18,6 +18,7 @@ export async function GET(request) {
         const search = searchParams.get('search') || '';
         const sortOrder = searchParams.get('sort') || 'desc';
         const status = searchParams.get('filter') || '';
+        const rating = searchParams.get('rating');
         const id = searchParams.get('id');
 
         // Si un ID est spécifié, récupérer une conversation spécifique
@@ -59,6 +60,7 @@ export async function GET(request) {
 
         if (search) params.append('search', search);
         if (status && status !== 'all') params.append('status', status);
+        if (rating !== null && rating !== undefined && rating !== '') params.append('rating', rating);
 
         url += `&${params.toString()}`;
 

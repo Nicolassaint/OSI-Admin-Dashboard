@@ -51,7 +51,7 @@ export default function MessagesPage() {
     setError(null);
     
     try {
-      // Gérer le filtre spécial "en_attente_negatif" côté frontend
+      // Gérer le filtre spécial "en_attente_negatif" avec le nouveau paramètre rating
       const backendFilter = filter === 'en_attente_negatif' ? 'en_attente' : filter;
       
       const params = new URLSearchParams({
@@ -61,13 +61,18 @@ export default function MessagesPage() {
         filter: backendFilter
       });
 
+      // Ajouter le paramètre rating pour le filtre "en_attente_negatif"
+      if (filter === 'en_attente_negatif') {
+        params.append('rating', '0'); // 0 = avis négatif
+      }
+
       // Utiliser customSearchTerm si fourni, sinon utiliser searchTerm
       const termToUse = customSearchTerm !== null ? customSearchTerm : searchTerm;
       if (termToUse) {
         params.append('search', termToUse);
       }
 
-      console.log('Fetching conversations with params:', params.toString());
+      // console.log('Fetching conversations with params:', params.toString());
 
       const response = await fetch(`/api/proxy/conversations?${params.toString()}`, {
         headers: {
@@ -85,26 +90,9 @@ export default function MessagesPage() {
       const data = await response.json();
       // console.log('Received data:', data);
       
-      // Filtrer côté frontend pour le cas spécial "en_attente_negatif"
-      let filteredConversations = data.conversations;
-      if (filter === 'en_attente_negatif') {
-        filteredConversations = data.conversations.filter(msg => 
-          msg.status === 'en_attente' && msg.evaluation === 0
-        );
-        
-        // Mettre à jour la pagination pour refléter le nombre réel de messages filtrés
-        const newPagination = {
-          ...data.pagination,
-          totalItems: filteredConversations.length,
-          totalPages: Math.ceil(filteredConversations.length / itemsPerPage)
-        };
-        setPagination(newPagination);
-      } else {
-        setPagination(data.pagination);
-      }
-      
-      // Mettre à jour les messages
-      setMessages(filteredConversations);
+      // Plus besoin de filtrage frontend ! Le backend fait tout avec le paramètre rating
+      setMessages(data.conversations);
+      setPagination(data.pagination);
       
     } catch (err) {
       console.error("Erreur lors de la récupération des conversations:", err);
