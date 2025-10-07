@@ -325,23 +325,43 @@ export default function MessagesPage() {
                         
                         switch (message.type) {
                           case 'update_conversation':
-                            updatedMessages = prevMessages.map(msg => 
-                              msg.id === message.data.id 
-                                ? { ...msg, status: message.data.status || msg.status, evaluation: message.data.evaluation?.rating === 1 ? 1 : message.data.evaluation?.rating === 0 ? 0 : null }
-                                : msg
-                            );
+                            // Mettre à jour le message et vérifier s'il correspond toujours au filtre
+                            updatedMessages = prevMessages
+                              .map(msg =>
+                                msg.id === message.data.id
+                                  ? { ...msg, status: message.data.status || msg.status, evaluation: message.data.evaluation?.rating === 1 ? 1 : message.data.evaluation?.rating === 0 ? 0 : null }
+                                  : msg
+                              )
+                              .filter(msg => {
+                                // Filtrer selon le filtre actif
+                                if (filter === 'all') return true;
+                                if (filter === 'en_attente_negatif') {
+                                  return msg.status === 'en_attente' && msg.evaluation === 0;
+                                }
+                                return msg.status === filter;
+                              });
                             break;
-                            
+
                           case 'evaluation_update':
-                            updatedMessages = prevMessages.map(msg => 
-                              msg.id === message.data.id 
-                                ? { 
-                                    ...msg, 
-                                    evaluation: message.data.evaluation?.rating,
-                                    status: message.data.evaluation?.rating === 1 ? 'resolu' : 'en_attente'
-                                  }
-                                : msg
-                            );
+                            // Mettre à jour l'évaluation et vérifier s'il correspond toujours au filtre
+                            updatedMessages = prevMessages
+                              .map(msg =>
+                                msg.id === message.data.id
+                                  ? {
+                                      ...msg,
+                                      evaluation: message.data.evaluation?.rating,
+                                      status: message.data.evaluation?.rating === 1 ? 'resolu' : 'en_attente'
+                                    }
+                                  : msg
+                              )
+                              .filter(msg => {
+                                // Filtrer selon le filtre actif
+                                if (filter === 'all') return true;
+                                if (filter === 'en_attente_negatif') {
+                                  return msg.status === 'en_attente' && msg.evaluation === 0;
+                                }
+                                return msg.status === filter;
+                              });
                             break;
                             
                           case 'new_conversation':
@@ -358,12 +378,27 @@ export default function MessagesPage() {
                                 image: message.data.image,
                                 buttons: message.data.buttons || []
                               };
-                              updatedMessages = [newConversation, ...prevMessages];
-                              // Mettre à jour le nombre total d'éléments
-                              setPagination(prev => ({
-                                ...prev,
-                                totalItems: prev.totalItems + 1
-                              }));
+
+                              // Vérifier si le nouveau message correspond au filtre actif
+                              let shouldAdd = false;
+                              if (filter === 'all') {
+                                shouldAdd = true;
+                              } else if (filter === 'en_attente_negatif') {
+                                shouldAdd = newConversation.status === 'en_attente' && newConversation.evaluation === 0;
+                              } else {
+                                shouldAdd = newConversation.status === filter;
+                              }
+
+                              if (shouldAdd) {
+                                updatedMessages = [newConversation, ...prevMessages];
+                                // Mettre à jour le nombre total d'éléments
+                                setPagination(prev => ({
+                                  ...prev,
+                                  totalItems: prev.totalItems + 1
+                                }));
+                              } else {
+                                return prevMessages;
+                              }
                             } else {
                               return prevMessages;
                             }
@@ -512,20 +547,29 @@ export default function MessagesPage() {
     debounce(async (id, status) => {
       try {
         // console.log(`Mise à jour du statut pour ${id} vers ${status}`);
-        
-        // Mettre à jour l'état local immédiatement
+
+        // Mettre à jour l'état local immédiatement et filtrer selon le filtre actif
         setMessages(prevMessages => {
-          const updatedMessages = prevMessages.map(msg => {
-            if (msg.id === id) {
-              return { ...msg, status };
-            }
-            return msg;
-          });
-          
+          const updatedMessages = prevMessages
+            .map(msg => {
+              if (msg.id === id) {
+                return { ...msg, status };
+              }
+              return msg;
+            })
+            .filter(msg => {
+              // Filtrer selon le filtre actif
+              if (filter === 'all') return true;
+              if (filter === 'en_attente_negatif') {
+                return msg.status === 'en_attente' && msg.evaluation === 0;
+              }
+              return msg.status === filter;
+            });
+
           // Mettre à jour le cache avec les nouvelles données
           messagesCache = updatedMessages;
           lastFetchTime = Date.now();
-          
+
           return updatedMessages;
         });
 
@@ -538,7 +582,7 @@ export default function MessagesPage() {
           body: JSON.stringify({ status }),
           signal: AbortSignal.timeout(15000) // Augmenter le timeout
         });
-        
+
         if (!response.ok) {
           // En cas d'erreur, on remet le statut précédent
           setMessages(prevMessages => {
@@ -554,14 +598,14 @@ export default function MessagesPage() {
           });
           throw new Error(`Erreur HTTP: ${response.status}`);
         }
-        
+
         return true;
       } catch (error) {
         console.error(`Erreur lors de la mise à jour du statut du message ${id}:`, error);
         return false;
       }
     }, 300),
-    []
+    [filter]
   );
 
   // Mettre à jour les fonctions de gestion des statuts
