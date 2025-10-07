@@ -23,7 +23,7 @@ const CACHE_DURATION_DETAILS = 300000; // 5 minutes
 
 export default function MessagesPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState("en_attente");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
