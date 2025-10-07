@@ -153,36 +153,69 @@ export default function RagDatabasePage() {
     setCategories(uniqueCategories);
   }, [ragData]);
 
-  // Effet modifié pour filtrer par terme de recherche ET catégorie
+  // Effet modifié pour filtrer par terme de recherche ET catégorie avec pondération
   useEffect(() => {
     if (!ragData) return;
-    
+
     const searchTermLower = searchTerm?.toLowerCase() || "";
-    
+
     // Filtre initial par terme de recherche
     let filtered = ragData;
-    
+
     if (searchTermLower !== "") {
-      filtered = filtered.filter(entry => 
-        (typeof entry?.name === 'string' ? entry.name.toLowerCase().includes(searchTermLower) : false) ||
-        (typeof entry?.description === 'string' ? entry.description.toLowerCase().includes(searchTermLower) : false) ||
-        (typeof entry?.search === 'string' ? entry.search.toLowerCase().includes(searchTermLower) : false) ||
-        (typeof entry?.details?.label === 'string' ? entry.details.label.toLowerCase().includes(searchTermLower) : false) ||
-        (typeof entry?.details?.Label === 'string' ? entry.details.Label.toLowerCase().includes(searchTermLower) : false) ||
-        entry?.details?.messages?.some(message => 
-          typeof message?.label === 'string' ? message.label.toLowerCase().includes(searchTermLower) : false
-        ) ||
-        entry?.details?.Messages?.some(message => 
-          typeof message?.Label === 'string' ? message.Label.toLowerCase().includes(searchTermLower) : false
-        )
-      );
+      // Créer un tableau avec les entrées et leur score de pertinence
+      const scoredEntries = ragData.map(entry => {
+        let score = 0;
+        let matches = false;
+
+        // Score prioritaire pour le nom (name)
+        if (typeof entry?.name === 'string') {
+          const nameLower = entry.name.toLowerCase();
+
+          // Score maximal pour correspondance exacte (insensible à la casse)
+          if (nameLower === searchTermLower) {
+            score = 10000;
+            matches = true;
+          }
+          // Score normal pour correspondance partielle dans le nom
+          else if (nameLower.includes(searchTermLower)) {
+            score = 1000;
+            matches = true;
+          }
+        }
+
+        // Score normal pour les autres champs (seulement si pas de match dans name)
+        if (!matches && (
+          (typeof entry?.description === 'string' && entry.description.toLowerCase().includes(searchTermLower)) ||
+          (typeof entry?.search === 'string' && entry.search.toLowerCase().includes(searchTermLower)) ||
+          (typeof entry?.details?.label === 'string' && entry.details.label.toLowerCase().includes(searchTermLower)) ||
+          (typeof entry?.details?.Label === 'string' && entry.details.Label.toLowerCase().includes(searchTermLower)) ||
+          entry?.details?.messages?.some(message =>
+            typeof message?.label === 'string' && message.label.toLowerCase().includes(searchTermLower)
+          ) ||
+          entry?.details?.Messages?.some(message =>
+            typeof message?.Label === 'string' && message.Label.toLowerCase().includes(searchTermLower)
+          )
+        )) {
+          score = 10;
+          matches = true;
+        }
+
+        return { entry, score, matches };
+      });
+
+      // Filtrer uniquement les entrées qui matchent et trier par score décroissant
+      filtered = scoredEntries
+        .filter(item => item.matches)
+        .sort((a, b) => b.score - a.score)
+        .map(item => item.entry);
     }
-    
+
     // Filtre supplémentaire par catégorie si une catégorie est sélectionnée
     if (selectedCategory) {
       filtered = filtered.filter(entry => entry.categorie === selectedCategory);
     }
-    
+
     setFilteredData(filtered);
     setCurrentPage(1); // Réinitialiser la pagination lors d'un changement de filtre
   }, [searchTerm, ragData, selectedCategory]);
