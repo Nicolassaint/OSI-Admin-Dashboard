@@ -62,8 +62,10 @@ async function fetchDashboardMetrics() {
 }
 
 export default function DashboardPage() {
-  const [metricsData, setMetricsData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Initialiser avec le cache si disponible
+  const cachedMetrics = getCachedData('metrics');
+  const [metricsData, setMetricsData] = useState(cachedMetrics);
+  const [loading, setLoading] = useState(!cachedMetrics);
   const [metricsError, setMetricsError] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
 
@@ -80,9 +82,12 @@ export default function DashboardPage() {
         setLoading(false);
       }
     }
-    
-    loadMetrics();
-    
+
+    // Si pas de cache, charger immédiatement
+    if (!cachedMetrics) {
+      loadMetrics();
+    }
+
     // Rafraîchir les données toutes les 60 secondes (fallback si WebSocket échoue)
     const interval = setInterval(loadMetrics, 60000);
     return () => clearInterval(interval);

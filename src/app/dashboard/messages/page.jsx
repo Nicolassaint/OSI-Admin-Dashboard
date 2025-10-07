@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import React from "react";
 import { MessageList, MessageFilter, MessageSearch, MessageSort, MessageEvaluationFilter } from "@/components/messages";
@@ -38,7 +38,9 @@ export default function MessagesPage() {
     itemsPerPage: 20
   });
   const [highlightedMessageId, setHighlightedMessageId] = useState(null);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const searchParams = useSearchParams();
+  const previousMessageIdRef = useRef(null);
 
   // Fonction pour récupérer les conversations avec pagination
   const fetchConversations = useCallback(async (page = 1, forceRefresh = false, isSearch = false, customSearchTerm = null) => {
@@ -115,21 +117,20 @@ export default function MessagesPage() {
 
   // Effet pour recharger les messages quand les filtres changent (sans searchTerm)
   useEffect(() => {
-    fetchConversations(1, true);
+    // Ne pas recharger si c'est le chargement initial
+    if (initialLoadDone) {
+      fetchConversations(1, true);
+    }
   }, [sortOrder, filter, itemsPerPage]);
 
     // Fonction pour scroller vers un message spécifique
   const scrollToMessage = useCallback((messageId) => {
-    console.log('Tentative de scroll vers:', messageId);
     const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
     if (messageElement) {
-      console.log('Élément trouvé, scroll en cours...');
       messageElement.scrollIntoView({
         behavior: 'smooth',
         block: 'center'
       });
-    } else {
-      console.log('Élément non trouvé pour le messageId:', messageId);
     }
   }, []);
 
@@ -159,7 +160,6 @@ export default function MessagesPage() {
         const messageFound = data.conversations.find(msg => msg.id === messageId);
         
         if (messageFound) {
-          console.log(`Message ${messageId} trouvé page ${page}`);
           // Naviguer vers cette page
           await fetchConversations(page, true, false);
           // Attendre que les messages soient chargés puis scroller
@@ -167,8 +167,6 @@ export default function MessagesPage() {
           return;
         }
       }
-      
-      console.log(`Message ${messageId} non trouvé dans les premières pages`);
     } catch (error) {
       console.error('Erreur lors de la recherche dans les pages:', error);
     }
@@ -177,9 +175,6 @@ export default function MessagesPage() {
   // Fonction pour chercher un message spécifique et naviguer vers la bonne page
   const findAndNavigateToMessage = useCallback(async (messageId) => {
     try {
-      // Chercher le message dans toutes les pages
-      console.log(`Recherche du message ${messageId}...`);
-      
       // Faire une recherche spécifique pour ce message
       const response = await fetch(`/api/proxy/conversations/${messageId}`, {
         headers: {
@@ -187,48 +182,57 @@ export default function MessagesPage() {
         },
         signal: AbortSignal.timeout(15000)
       });
-      
+
       if (!response.ok) {
-        console.error(`Message ${messageId} non trouvé`);
         return;
       }
-      
+
       // Le message existe, on doit maintenant le chercher dans la liste paginée
       // Pour simplifier, on va réinitialiser les filtres et chercher
       setFilter("all");
       setSearchTerm("");
       setSortOrder("desc");
-      
+
       // Chercher dans quelle page se trouve le message
       await searchMessageInPages(messageId);
-      
+
     } catch (error) {
       console.error('Erreur lors de la recherche du message:', error);
     }
   }, [searchMessageInPages]);
 
-  // Charger les données initiales
-  useEffect(() => {
-    fetchConversations(1, true);
-  }, []);
-
-  // Gérer la mise en surbrillance du message depuis l'URL
+  // Charger les données initiales et gérer la navigation vers un message spécifique
   useEffect(() => {
     const messageId = searchParams.get('messageId');
+
+    // Éviter de retraiter le même messageId plusieurs fois
+    if (messageId && messageId === previousMessageIdRef.current) {
+      return;
+    }
+
     if (messageId) {
-      console.log('Navigation vers le message:', messageId);
+      previousMessageIdRef.current = messageId;
       setHighlightedMessageId(messageId);
-      
+
       // Chercher le message et naviguer vers la bonne page
       findAndNavigateToMessage(messageId);
-      
-      // Supprimer la surbrillance après 5 secondes (augmenté pour laisser le temps)
+    } else if (!initialLoadDone) {
+      previousMessageIdRef.current = null;
+      // Chargement normal sans messageId
+      fetchConversations(1, true);
+      setInitialLoadDone(true);
+    }
+  }, [searchParams]);
+
+  // Effet séparé pour gérer le timer de surbrillance
+  useEffect(() => {
+    if (highlightedMessageId) {
       const timer = setTimeout(() => {
         setHighlightedMessageId(null);
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [searchParams, findAndNavigateToMessage]);
+  }, [highlightedMessageId]);
 
   // Effet séparé pour scroller vers le message une fois qu'il est chargé et surligné
   useEffect(() => {
@@ -236,7 +240,6 @@ export default function MessagesPage() {
       // Vérifier si le message surligné est dans la liste actuelle
       const targetMessage = messages.find(msg => msg.id === highlightedMessageId);
       if (targetMessage) {
-        console.log('Message trouvé dans la liste actuelle, scroll immédiat');
         setTimeout(() => scrollToMessage(highlightedMessageId), 200);
       }
     }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, startTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -267,9 +267,16 @@ export function RecentActivity() {
     }
   };
 
+  // Précharger la page des messages au survol
+  const handleMessageHover = (messageId) => {
+    router.prefetch(`/dashboard/messages?messageId=${messageId}`);
+  };
+
   // Fonction pour naviguer vers le message dans la page des messages
   const handleMessageClick = (messageId) => {
-    router.push(`/dashboard/messages?messageId=${messageId}`);
+    startTransition(() => {
+      router.push(`/dashboard/messages?messageId=${messageId}`);
+    });
   };
 
   return (
@@ -290,10 +297,11 @@ export function RecentActivity() {
             <p className="text-sm text-muted-foreground">Aucune interaction récente</p>
           ) : (
             messages.map((message) => (
-              <div 
-                key={`message-${message.id}`} 
-                className="flex items-start gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors duration-200"
+              <div
+                key={`message-${message.id}`}
+                className="flex items-start gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
                 onClick={() => handleMessageClick(message.id)}
+                onMouseEnter={() => handleMessageHover(message.id)}
                 title="Cliquer pour voir ce message dans la page des messages"
               >
                 <div className="space-y-1">

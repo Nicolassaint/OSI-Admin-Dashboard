@@ -46,11 +46,6 @@ export default function MessageList({
     }
   };
 
-  // Ajouter des logs pour le débogage
-  useEffect(() => {
-    // console.log('MessageList received messages:', messages);
-    console.log('MessageList received pagination:', pagination);
-  }, [messages, pagination]);
 
   if (loading) {
     return (
@@ -65,15 +60,12 @@ export default function MessageList({
   }
 
   if (!messages || messages.length === 0) {
-    console.log('No messages to display');
     return (
       <p className="text-center text-muted-foreground py-4">
         Aucun message trouvé
       </p>
     );
   }
-
-  // console.log('Rendering messages:', messages);
 
   return (
     <div className="space-y-4">
