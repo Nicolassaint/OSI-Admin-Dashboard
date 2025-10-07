@@ -24,6 +24,7 @@ import { useTheme } from "next-themes";
 import { useState } from "react";
 import SystemStatusIndicator from "@/components/layout/SystemStatusIndicator";
 import { getCachedData, setCachedData } from "@/lib/cache";
+import { APP_VERSION } from "@/lib/version";
 
 // Fonction pour précharger les données du tableau de bord
 async function preloadDashboardData() {
@@ -183,8 +184,15 @@ export default function DashboardLayout({ children }) {
             })}
           </ul>
         </nav>
-        
-        <div className="p-4">
+
+        <div className="p-4 space-y-3">
+          {/* Version de l'application */}
+          <div className="px-3 py-2 rounded-lg bg-primary/10 border border-primary/20">
+            <p className="text-xs text-primary font-semibold text-center">
+              v{APP_VERSION}
+            </p>
+          </div>
+
           <Button
             variant="outline"
             className="w-full justify-start"
