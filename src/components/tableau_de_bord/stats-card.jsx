@@ -43,7 +43,7 @@ export function StatCard({ name, value, icon: Icon }) {
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold flex flex-wrap">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="popLayout">
             {currentChars.map((char, index) => {
               const prevChar = prevChars[index];
               const hasChanged = prevChar !== char;
@@ -53,9 +53,8 @@ export function StatCard({ name, value, icon: Icon }) {
                   key={`${index}-${char}`}
                   initial={hasChanged ? { opacity: 0, y: -20 } : false}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  transition={{ duration: 0.5 }}
-                  style={{ 
+                  transition={{ duration: 0.3 }}
+                  style={{
                     display: 'inline-block',
                     whiteSpace: 'pre'
                   }}
