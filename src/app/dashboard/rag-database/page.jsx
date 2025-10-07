@@ -225,6 +225,15 @@ export default function RagDatabasePage() {
     setCurrentPage(1);
   }, [itemsPerPage]);
 
+  // Scroller en haut de la page lors du changement de page
+  useEffect(() => {
+    // Scroller le conteneur main du layout
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.scrollTo(0, 0);
+    }
+  }, [currentPage]);
+
   // Fonction pour réessayer le chargement
   const handleRetry = () => {
     fetchRagData(true); // Force le rechargement des données
