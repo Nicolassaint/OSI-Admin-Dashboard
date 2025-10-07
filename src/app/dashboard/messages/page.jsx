@@ -30,12 +30,12 @@ export default function MessagesPage() {
   const [error, setError] = useState(null);
   const [sortOrder, setSortOrder] = useState("desc");
   const [wsConnected, setWsConnected] = useState(false);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
-    itemsPerPage: 10
+    itemsPerPage: 20
   });
   const [highlightedMessageId, setHighlightedMessageId] = useState(null);
   const searchParams = useSearchParams();
